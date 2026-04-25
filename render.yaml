@@ -10,6 +10,8 @@ services:
       - name: media-disk
         mountPath: /var/data
     envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.9
       - key: SECRET_KEY
         generateValue: true
       - key: DEBUG
