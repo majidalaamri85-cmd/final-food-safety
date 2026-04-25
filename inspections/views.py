@@ -1012,11 +1012,17 @@ def export_evaluations_excel(request):
     return response
 
 
+_static_path_cache: dict = {}
+
+
 def link_callback(uri, rel):
     if uri.startswith(settings.MEDIA_URL):
         path = os.path.join(settings.MEDIA_ROOT, uri.replace(settings.MEDIA_URL, ''))
     elif uri.startswith(settings.STATIC_URL):
-        path = finders.find(uri.replace(settings.STATIC_URL, ''))
+        relative = uri.replace(settings.STATIC_URL, '')
+        if relative not in _static_path_cache:
+            _static_path_cache[relative] = finders.find(relative)
+        path = _static_path_cache[relative]
     else:
         return uri
 
@@ -1057,21 +1063,23 @@ def get_pdf_font_context():
 
 
 def _build_evaluation_report_context(evaluation):
-    items = EvaluationItem.objects.filter(evaluation=evaluation, status='non_compliant').select_related(
-        'criterion', 'criterion__section'
-    ).order_by('criterion__section__sort_order', 'criterion__sort_order', 'id')
+    items_list = list(
+        EvaluationItem.objects.filter(evaluation=evaluation, status='non_compliant')
+        .select_related('criterion', 'criterion__section')
+        .order_by('criterion__section__sort_order', 'criterion__sort_order', 'id')
+    )
 
     grouped_items = OrderedDict()
     images_by_criterion = {}
     for image in EvaluationImage.objects.filter(evaluation=evaluation).select_related('criterion').order_by('id'):
         images_by_criterion.setdefault(image.criterion_id, []).append(image)
 
-    for item in items:
+    for item in items_list:
         section = item.criterion.section
         grouped_items.setdefault(section, [])
         grouped_items[section].append(item)
 
-    evaluation.calculate_results()
+    # النتائج محفوظة مسبقاً - لا حاجة لإعادة الحساب عند كل فتح للتقرير
 
     def _person_name(user):
         if not user:
@@ -1102,8 +1110,11 @@ def _build_evaluation_report_context(evaluation):
         'grouped_items': grouped_items,
         'images_by_criterion': images_by_criterion,
         'signature_rows': signature_rows,
-        'non_compliant_total': items.count(),
+        'non_compliant_total': len(items_list),
     }
+
+
+PDF_CACHE_TIMEOUT = 60 * 10  # 10 دقائق
 
 
 @login_required
@@ -1112,9 +1123,21 @@ def evaluation_pdf(request, pk):
         Evaluation.objects.select_related('establishment', 'inspector', 'reviewer').prefetch_related('team_members'),
         pk=pk,
     )
+    # استخدم الكاش فقط للتقييمات المكتملة (المسودات قد تتغير)
+    pdf_cache_key = None
+    if evaluation.approval_status == 'completed':
+        pdf_cache_key = f'pdf_bytes:eval:{pk}'
+        cached_pdf = cache.get(pdf_cache_key)
+        if cached_pdf is not None:
+            response = HttpResponse(cached_pdf, content_type='application/pdf')
+            response['Content-Disposition'] = f'inline; filename="official_evaluation_{pk}.pdf"'
+            return response
+
     context = _build_evaluation_report_context(evaluation)
     response = render_to_pdf('inspections/evaluation_pdf_official.html', context)
     if response:
+        if pdf_cache_key:
+            cache.set(pdf_cache_key, response.content, PDF_CACHE_TIMEOUT)
         response['Content-Disposition'] = f'inline; filename="official_evaluation_{evaluation.id}.pdf"'
         return response
     return HttpResponse('حدث خطأ أثناء إنشاء ملف PDF')
