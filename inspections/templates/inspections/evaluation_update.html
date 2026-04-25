@@ -50,7 +50,7 @@
   }
 </style>
 
-<form method="post" enctype="multipart/form-data">
+<form method="post" enctype="multipart/form-data" id="evaluationForm">
   {% csrf_token %}
   {{ formset.management_form }}
   {{ record_formset.management_form }}
@@ -167,7 +167,7 @@
                             <div class="d-flex flex-wrap gap-2">
                               {% for image in imgs %}
                                 <div>
-                                  <img src="{{ image.image.url }}" class="preview-image" alt="صورة">
+                                  <img src="{{ image.image.url }}" class="preview-image" alt="صورة" loading="lazy" width="120" height="90">
                                   {% if image.caption %}<div class="small-muted">{{ image.caption }}</div>{% endif %}
                                 </div>
                               {% endfor %}
@@ -318,18 +318,31 @@
     </div>
   </div>
 
-  <div class="d-flex gap-2 mt-4">
-    <button type="submit" class="btn btn-success">حفظ التقييم</button>
-    {% if evaluation.approval_status == 'draft' %}
-      <a href="{% url 'evaluation_submit' evaluation.pk %}" class="btn btn-outline-primary">إنهاء التقييم</a>
-    {% endif %}
-    <a href="{% url 'evaluation_pdf' evaluation.pk %}" class="btn btn-danger" target="_blank">تصدير PDF</a>
-  </div>
+  <!-- مسافة لتجنب تغطية المحتوى بشريط الحفظ الثابت -->
+  <div style="height:4rem;"></div>
 </div>
 </form>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<!-- شريط الحفظ الثابت في الأسفل -->
+<div class="eval-save-bar d-flex gap-2 align-items-center">
+  <button type="submit" form="evaluationForm" class="btn btn-success">
+    <i class="fa-solid fa-floppy-disk me-1"></i>حفظ
+  </button>
+  {% if evaluation.approval_status == 'draft' %}
+    <a href="{% url 'evaluation_submit' evaluation.pk %}" class="btn btn-outline-primary">
+      <i class="fa-solid fa-circle-check me-1"></i>إنهاء التقييم
+    </a>
+  {% endif %}
+  <a href="{% url 'evaluation_pdf' evaluation.pk %}" class="btn btn-danger" target="_blank">
+    <i class="fa-solid fa-file-pdf me-1"></i>PDF
+  </a>
+  <span class="ms-auto text-muted small d-none d-md-inline">
+    <i class="fa-solid fa-building text-success me-1"></i>{{ evaluation.establishment }}
+  </span>
+</div>
+
 <script>
+  // Bootstrap محمل بالفعل من base.html - لا حاجة لتحميله مرتين
   (function setupAccordionToggleBehavior() {
     document.querySelectorAll('#evaluationAccordion .accordion-button[data-bs-toggle="collapse"]').forEach(function(button) {
       button.addEventListener('click', function(event) {
