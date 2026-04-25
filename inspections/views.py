@@ -1,4 +1,5 @@
 import os
+import hashlib
 import tempfile
 from collections import OrderedDict
 from io import BytesIO
@@ -159,6 +160,20 @@ def _get_reference_data():
         }
         cache.set(REFERENCE_DATA_CACHE_KEY, reference_data, REFERENCE_DATA_CACHE_TIMEOUT)
     return reference_data
+
+
+def _build_dashboard_cache_key(user_id, governorate_id, wilayat_id, classification, approval_status, date_from, date_to):
+    raw = '|'.join([
+        str(user_id),
+        governorate_id,
+        wilayat_id,
+        classification,
+        approval_status,
+        date_from,
+        date_to,
+    ])
+    digest = hashlib.md5(raw.encode('utf-8')).hexdigest()
+    return f'dashboard_ctx:{digest}'
 
 
 def _apply_rbac(qs_establishments, qs_evaluations, profile):
@@ -365,6 +380,19 @@ def dashboard(request):
     date_from = request.GET.get('date_from', '').strip()
     date_to = request.GET.get('date_to', '').strip()
 
+    cache_key = _build_dashboard_cache_key(
+        request.user.id,
+        governorate_id,
+        wilayat_id,
+        classification,
+        approval_status,
+        date_from,
+        date_to,
+    )
+    cached_context = cache.get(cache_key)
+    if cached_context is not None:
+        return render(request, 'inspections/dashboard.html', cached_context)
+
     establishments_qs = Establishment.objects.all()
     evaluations_qs = Evaluation.objects.select_related('establishment')
     establishments_qs, evaluations_qs = _apply_rbac(establishments_qs, evaluations_qs, profile)
@@ -493,6 +521,8 @@ def dashboard(request):
         'approval_status_choices': Evaluation.APPROVAL_STATUS_CHOICES,
     }
 
+    cache.set(cache_key, context, DASHBOARD_CACHE_TIMEOUT)
+
     return render(request, 'inspections/dashboard.html', context)
 
 
@@ -557,15 +587,11 @@ def establishment_create(request):
         obj = form.save()
         messages.success(request, f'تم حفظ المنشأة بنجاح. رقم المنشأة: {obj.establishment_no} | الرقم المرجعي: {obj.reference_no}')
         return redirect('establishment_list')
-    wilayats = list(
-        Wilayat.objects.select_related('governorate')
-        .order_by('governorate__name_ar', 'name_ar')
-        .values('id', 'name_ar', 'governorate_id')
-    )
+    reference_data = _get_reference_data()
     return render(request, 'inspections/establishment_form.html', {
         'form': form,
         'title': 'إضافة منشأة',
-        'wilayats': wilayats,
+        'wilayats': reference_data['wilayats'],
         'isic_activities': ISIC4_FOOD_ACTIVITIES,
     })
 
@@ -693,7 +719,10 @@ def evaluation_create(request):
 @login_required
 def evaluation_update(request, pk):
     profile = _get_profile(request.user)
-    evaluation = get_object_or_404(Evaluation.objects.select_related('establishment', 'inspector'), pk=pk)
+    evaluation = get_object_or_404(
+        Evaluation.objects.select_related('establishment', 'inspector', 'reviewer').prefetch_related('team_members'),
+        pk=pk,
+    )
 
     # المفتش لا يستطيع تعديل تقييمات الآخرين
     if profile and profile.role == 'inspector' and evaluation.inspector != request.user:
@@ -774,8 +803,12 @@ def evaluation_update(request, pk):
         team_formset = EvaluationTeamMemberFormSet(queryset=team_queryset, prefix='team')
 
     grouped_forms = OrderedDict()
-    non_compliant_count = queryset.filter(status='non_compliant').count()
-    compliant_count = queryset.filter(status='compliant').count()
+    status_counts = {
+        row['status']: row['total']
+        for row in queryset.values('status').annotate(total=Count('id'))
+    }
+    non_compliant_count = status_counts.get('non_compliant', 0)
+    compliant_count = status_counts.get('compliant', 0)
     has_evaluation_result = EvaluationActivityLog.objects.filter(
         evaluation=evaluation,
         action__in=['حفظ التقييم', 'إنهاء التقييم'],
@@ -795,48 +828,6 @@ def evaluation_update(request, pk):
         section = form.instance.criterion.section
         grouped_forms.setdefault(section, [])
         grouped_forms[section].append(form)
-
-    signature_rows = [
-        {
-            'name': getattr(evaluation.inspector, 'get_full_name', lambda: '')() or evaluation.inspector.username,
-            'job_title': 'المفتش / المقيم',
-        }
-    ]
-    signature_rows.extend(
-        {
-            'name': member.full_name,
-            'job_title': member.job_title,
-        }
-        for member in evaluation.team_members.all()
-    )
-    if evaluation.reviewer:
-        signature_rows.append({
-            'name': getattr(evaluation.reviewer, 'get_full_name', lambda: '')() or evaluation.reviewer.username,
-            'job_title': 'المراجع الفني',
-        })
-    while len(signature_rows) < 4:
-        signature_rows.append({'name': '', 'job_title': ''})
-
-    signature_rows = [
-        {
-            'name': getattr(evaluation.inspector, 'get_full_name', lambda: '')() or evaluation.inspector.username,
-            'job_title': 'المفتش / المقيم',
-        }
-    ]
-    signature_rows.extend(
-        {
-            'name': member.full_name,
-            'job_title': member.job_title,
-        }
-        for member in evaluation.team_members.all()
-    )
-    if evaluation.reviewer:
-        signature_rows.append({
-            'name': getattr(evaluation.reviewer, 'get_full_name', lambda: '')() or evaluation.reviewer.username,
-            'job_title': 'المراجع الفني',
-        })
-    while len(signature_rows) < 4:
-        signature_rows.append({'name': '', 'job_title': ''})
 
     signature_rows = [
         {
@@ -893,8 +884,20 @@ def evaluation_submit(request, pk):
 
 @login_required
 def corrective_action_list(request):
-    qs = CorrectiveActionLog.objects.select_related('evaluation', 'criterion').all()
-    return render(request, 'inspections/corrective_list.html', {'actions': qs})
+    qs = (
+        CorrectiveActionLog.objects.select_related('evaluation', 'criterion')
+        .order_by('-id')
+    )
+    paginator = Paginator(qs, PAGE_SIZE)
+    page_obj = paginator.get_page(request.GET.get('page'))
+    return render(
+        request,
+        'inspections/corrective_list.html',
+        {
+            'actions': page_obj,
+            'page_obj': page_obj,
+        },
+    )
 
 
 @login_required
@@ -1063,7 +1066,6 @@ def _build_evaluation_report_context(evaluation):
         grouped_items[section].append(item)
 
     evaluation.calculate_results()
-    evaluation.save(update_fields=['total_points', 'percentage', 'classification'])
 
     def _person_name(user):
         if not user:
