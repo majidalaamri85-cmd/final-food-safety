@@ -1,0 +1,159 @@
+{% extends 'base.html' %}
+{% load inspection_extras %}
+{% block breadcrumb %}<li class="breadcrumb-item active" aria-current="page">التقارير</li>{% endblock %}
+{% block content %}
+
+<div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+  <div>
+    <h1><i class="fa-solid fa-clipboard-list text-success me-2"></i>تقارير التقييم</h1>
+    <div class="sub">فلترة التقارير بحسب المحافظة والولاية ودرجة التصنيف</div>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    <a class="btn btn-outline-success" href="/exports/evaluations.xlsx?governorate={{ selected_governorate }}&wilayat={{ selected_wilayat }}&classification={{ selected_classification }}&q={{ q }}">
+      <i class="fa-solid fa-file-excel me-1"></i>تصدير إكسل
+    </a>
+    <a class="btn btn-success" href="/evaluations/new/">
+      <i class="fa-solid fa-plus me-1"></i>إضافة تقييم
+    </a>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <form class="row g-3 align-items-end">
+      <div class="col-md-3">
+        <label class="form-label"><i class="fa-solid fa-map me-1"></i>المحافظة</label>
+        <select name="governorate" id="governorateFilter" class="form-select">
+          <option value="">كل المحافظات</option>
+          {% for governorate in governorates %}
+            <option value="{{ governorate.governorate__id }}" {% if selected_governorate == governorate.governorate__id|stringformat:'s' %}selected{% endif %}>{{ governorate.governorate__name_ar }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label"><i class="fa-solid fa-location-dot me-1"></i>الولاية</label>
+        <select name="wilayat" id="wilayatFilter" class="form-select">
+          <option value="">كل الولايات</option>
+          {% for wilayat in wilayats %}
+            <option value="{{ wilayat.wilayat__id }}" data-governorate="{{ wilayat.governorate__id }}" {% if selected_wilayat == wilayat.wilayat__id|stringformat:'s' %}selected{% endif %}>{{ wilayat.wilayat__name_ar }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label"><i class="fa-solid fa-star me-1"></i>التصنيف</label>
+        <select name="classification" class="form-select">
+          <option value="">كل الدرجات</option>
+          {% for value, label in classification_choices %}
+            <option value="{{ value }}" {% if selected_classification == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label"><i class="fa-solid fa-magnifying-glass me-1"></i>بحث</label>
+        <input class="form-control" name="q" value="{{ q }}" placeholder="رقم المنشأة أو اسم المنشأة...">
+      </div>
+      <div class="col-md-2 d-flex gap-2">
+        <button class="btn btn-success flex-grow-1" type="submit"><i class="fa-solid fa-filter me-1"></i>تطبيق</button>
+        <a class="btn btn-outline-secondary" href="/evaluations/" title="إعادة تعيين"><i class="fa-solid fa-rotate-right"></i></a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0 align-middle">
+      <thead>
+        <tr>
+          <th><i class="fa-solid fa-store fa-xs me-1"></i>المنشأة</th>
+          <th><i class="fa-solid fa-map fa-xs me-1"></i>المحافظة</th>
+          <th><i class="fa-solid fa-calendar fa-xs me-1"></i>تاريخ الزيارة</th>
+          <th class="text-center"><i class="fa-solid fa-star fa-xs me-1"></i>التصنيف</th>
+          <th class="text-center"><i class="fa-solid fa-circle-dot fa-xs me-1"></i>الحالة</th>
+          <th class="text-center">الإجراءات</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in evaluations %}
+          <tr>
+            <td>
+              <div class="fw-semibold">{{ e.establishment }}</div>
+              <div class="small text-muted"><i class="fa-solid fa-barcode fa-xs me-1"></i>مرجع التقرير: {{ e.report_reference_no }}</div>
+              <div class="small text-muted"><i class="fa-solid fa-fingerprint fa-xs me-1"></i>مرجع المنشأة: {{ e.establishment.reference_no }}</div>
+              <div class="small text-muted"><i class="fa-solid fa-hashtag fa-xs me-1"></i>{{ e.establishment.license_no }}</div>
+            </td>
+            <td>
+              <div>{{ e.establishment.governorate.name_ar }}</div>
+              <div class="small text-muted">{{ e.establishment.wilayat.name_ar }}</div>
+            </td>
+            <td>{{ e.visit_date|date:"Y/m/d"|arabic_digits }}</td>
+            <td class="text-center">
+              <span class="badge rounded-pill px-3 py-1
+                {% if e.classification == 'excellent' %}bg-success
+                {% elif e.classification == 'good' %}bg-info
+                {% elif e.classification == 'acceptable' %}bg-warning text-dark
+                {% else %}bg-danger{% endif %}">
+                {{ e.get_classification_display }}
+              </span>
+            </td>
+            <td class="text-center">
+              {% if e.approval_status == 'completed' %}
+                <span class="badge bg-success-subtle text-success border border-success border-opacity-25 rounded-pill px-2">مكتمل</span>
+              {% else %}
+                <span class="badge bg-secondary-subtle text-secondary border rounded-pill px-2">مسودة</span>
+              {% endif %}
+            </td>
+            <td class="text-center">
+              <div class="d-flex gap-1 justify-content-center flex-wrap">
+                <a class="btn btn-sm btn-outline-success" href="/evaluations/{{ e.id }}/edit/" title="فتح التقييم"><i class="fa-solid fa-pen-to-square"></i></a>
+                <a class="btn btn-sm btn-outline-danger" href="/evaluations/{{ e.id }}/pdf/" target="_blank" title="تقرير PDF"><i class="fa-solid fa-file-pdf"></i></a>
+                {% if e.approval_status == 'draft' %}
+                  <a class="btn btn-sm btn-outline-primary" href="/evaluations/{{ e.id }}/submit/" title="إنهاء التقييم"><i class="fa-solid fa-check"></i></a>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="6" class="text-center p-5 text-muted">
+            <i class="fa-regular fa-folder-open fa-2x mb-2 d-block"></i>لا توجد تقارير مستوفية لخيارات البحث الحالية
+          </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if page_obj.paginator.num_pages > 1 %}
+<nav class="mt-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+  <div class="text-muted small">صفحة {{ page_obj.number|arabic_digits }} من {{ page_obj.paginator.num_pages|arabic_digits }} &mdash; إجمالي {{ page_obj.paginator.count|arabic_digits }} تقرير</div>
+  <ul class="pagination mb-0">
+    {% if page_obj.has_previous %}
+      <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&q={{ q }}&governorate={{ selected_governorate }}&wilayat={{ selected_wilayat }}&classification={{ selected_classification }}"><i class="fa-solid fa-chevron-right fa-xs"></i></a></li>
+    {% endif %}
+    {% for num in page_obj.paginator.page_range %}
+      {% if page_obj.number == num %}
+        <li class="page-item active"><span class="page-link">{{ num|arabic_digits }}</span></li>
+      {% elif num >= page_obj.number|add:'-3' and num <= page_obj.number|add:'3' %}
+        <li class="page-item"><a class="page-link" href="?page={{ num }}&q={{ q }}&governorate={{ selected_governorate }}&wilayat={{ selected_wilayat }}&classification={{ selected_classification }}">{{ num|arabic_digits }}</a></li>
+      {% endif %}
+    {% endfor %}
+    {% if page_obj.has_next %}
+      <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&q={{ q }}&governorate={{ selected_governorate }}&wilayat={{ selected_wilayat }}&classification={{ selected_classification }}"><i class="fa-solid fa-chevron-left fa-xs"></i></a></li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %}
+
+<script>
+  function filterWilayats() {
+    const gov = document.getElementById('governorateFilter').value;
+    document.querySelectorAll('#wilayatFilter option[data-governorate]').forEach(function(o) {
+      o.hidden = gov && o.dataset.governorate !== gov;
+    });
+    const sel = document.getElementById('wilayatFilter');
+    if (sel.selectedOptions[0] && sel.selectedOptions[0].hidden) sel.value = '';
+  }
+  document.getElementById('governorateFilter').addEventListener('change', filterWilayats);
+  filterWilayats();
+</script>
+{% endblock %}

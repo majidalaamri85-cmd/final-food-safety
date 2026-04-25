@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block title %}إنشاء تقييم{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item active" aria-current="page">إنشاء تقييم</li>{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="mb-0">إنشاء تقييم جديد</h1>
+  <a class="btn btn-outline-secondary" href="/evaluations/">رجوع</a>
+</div>
+<div class="card shadow-sm">
+  <div class="card-body">
+    <form method="post">
+      {% csrf_token %}
+      <div class="row g-3">
+        {% for field in form %}
+          <div class="{% if field.name == 'notes' or field.name == 'corrective_action' %}col-12{% else %}col-md-6{% endif %}">
+            <label class="form-label">{{ field.label }}</label>
+            {{ field }}
+            {% if field.errors %}<div class="text-danger small">{{ field.errors }}</div>{% endif %}
+          </div>
+        {% endfor %}
+      </div>
+      <div class="mt-4 d-flex gap-2">
+        <button type="submit" class="btn btn-success">إنشاء التقييم</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

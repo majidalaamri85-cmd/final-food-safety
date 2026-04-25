@@ -1,0 +1,722 @@
+{% extends 'base.html' %}
+{% load inspection_extras %}
+{% block title %}إدخال بنود التقييم{% endblock %}
+{% block content %}
+<style>
+  .section-card { border-radius: 8px; overflow: hidden; }
+  .item-row { border-bottom: 1px solid #eee; padding: 14px 0; transition: 0.2s ease-in-out; }
+  .item-row:last-child { border-bottom: 0; }
+  .item-text { font-weight: 600; }
+  .small-muted { color: #6c757d; font-size: 13px; }
+  .criterion-risk-note { font-size: 12px; margin-top: 4px; }
+  .criterion-risk-note.low { color: #2f8f8f; }
+  .criterion-risk-note.medium { color: #b7791f; }
+  .criterion-risk-note.high { color: #c2410c; }
+  .criterion-risk-note.critical { color: #c0392b; font-weight: 700; }
+  textarea { resize: vertical; }
+  .item-non-compliant { background: #fff5f5; border-right: 4px solid #dc3545; padding-right: 10px; border-radius: 8px; }
+  .preview-image { width: 120px; height: 90px; object-fit: cover; border-radius: 8px; border: 1px solid #ddd; margin-top: 8px; }
+  .top-sticky { position: static; }
+  .remark-wrap { display: none; }
+  .remark-wrap.is-visible { display: block; }
+  .corrective-action-wrap { display: none; }
+  .corrective-action-wrap.is-visible { display: block; }
+  .team-member-form {
+    background: linear-gradient(180deg, #ffffff 0%, #f8fbf9 100%);
+    border: 1px solid #d9e7dd !important;
+    box-shadow: 0 8px 24px rgba(23, 100, 59, 0.06);
+  }
+  .team-member-form .form-label {
+    font-weight: 700;
+    color: #34AD8A;
+  }
+  .team-add-wrap {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e4efe7;
+    text-align: center;
+  }
+  .team-add-btn {
+    border-radius: 999px;
+    padding: .7rem 1.2rem;
+    font-weight: 700;
+    border: 1px solid #b9e1d4;
+    background: #eef8f4;
+    color: #34AD8A;
+  }
+  .team-add-btn:hover {
+    background: #dff3ec;
+    color: #27866b;
+  }
+</style>
+
+<form method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+  {{ formset.management_form }}
+  {{ record_formset.management_form }}
+  {{ team_formset.management_form }}
+
+<div class="card shadow-sm mb-4 top-sticky">
+  <div class="card-header bg-success text-white">
+    <h4 class="mb-0">بيانات المنشأة</h4>
+  </div>
+  <div class="card-body">
+    <div class="row g-3 mb-3">
+      <div class="col-md-6">
+        <label class="form-label">المنشأة</label>
+        <input type="text" id="establishmentLookup" class="form-control" list="establishmentOptions" placeholder="إدخال اسم أو رقم المنشأة لبدء التقييم">
+        <datalist id="establishmentOptions">
+          {% for obj in meta_form.fields.establishment.queryset %}
+            <option value="{{ obj.establishment_no }} - {{ obj.commercial_name }}"></option>
+          {% endfor %}
+        </datalist>
+        <div class="d-none">{{ meta_form.establishment }}</div>
+        {% if meta_form.establishment.errors %}<div class="text-danger small">{{ meta_form.establishment.errors }}</div>{% endif %}
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">تاريخ التقييم</label>
+        {{ meta_form.visit_date }}
+        {% if meta_form.visit_date.errors %}<div class="text-danger small">{{ meta_form.visit_date.errors }}</div>{% endif %}
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="establishmentHint" class="alert alert-info shadow-sm mb-4">
+  أدخل اسم المنشأة أو رقم المنشأة ثم اخترها لتظهر أقسام البنود وتبدأ التقييم.
+</div>
+
+<div id="establishmentDetails" class="alert alert-light shadow-sm mb-3 d-none">
+  <div class="row g-2">
+    <div class="col-md-6"><strong>رقم المنشأة:</strong> <span id="selectedEstablishmentNo">-</span></div>
+    <div class="col-md-6"><strong>اسم المنشأة:</strong> <span id="selectedEstablishmentName">-</span></div>
+  </div>
+</div>
+
+<div id="startEvaluationAction" class="mb-3 d-none">
+  <button type="button" id="startEvaluationBtn" class="btn btn-primary">بدء التقييم</button>
+</div>
+
+<div id="evaluationContent" class="d-none">
+
+{% if high_risk_non_compliant %}
+<div class="alert alert-danger shadow-sm">
+  توجد بنود عالية الخطورة غير مستوفية: {{ high_risk_non_compliant|join:", " }}.
+  لا يتم المنح حتى إغلاقها، ويتم تحويل القرار إلى متابعة وتصحيح.
+</div>
+{% endif %}
+
+{% if has_evaluation_result %}
+{% with status=evaluation.establishment_status %}
+<div class="alert alert-{{ status.color }} border-0 shadow-sm mb-4 py-3 px-4" style="border-radius: 1rem;">
+  <div class="d-flex align-items-center gap-3 flex-wrap">
+    <div class="flex-shrink-0 fs-1">
+      <i class="fa-solid {{ status.icon }}"></i>
+    </div>
+    <div class="flex-grow-1">
+      <div class="small fw-semibold text-uppercase mb-1" style="letter-spacing:1px;">حالة المنشأة بعد التقييم</div>
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        <span class="badge bg-{{ status.color }} fs-6 px-3 py-2" style="border-radius:.6rem;">
+          {{ status.label }}
+        </span>
+        <span class="fw-semibold">{{ status.range|arabic_digits }}</span>
+        <span class="text-body">— {{ status.description }}</span>
+      </div>
+    </div>
+  </div>
+</div>
+{% endwith %}
+{% endif %}
+
+  <div class="accordion" id="evaluationAccordion">
+    {% for section, forms in grouped_forms.items %}
+      <div class="accordion-item section-card mb-3 shadow-sm">
+        <h2 class="accordion-header" id="heading{{ section.id }}">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ section.id }}">
+            {{ section.sort_order }} - {{ section.name_ar }}
+          </button>
+        </h2>
+
+        <div id="collapse{{ section.id }}" class="accordion-collapse collapse" data-bs-parent="#evaluationAccordion">
+          <div class="accordion-body">
+            {% for form in forms %}
+              <div class="item-row evaluation-item-row {% if form.instance.status == 'non_compliant' %}item-non-compliant{% endif %}" data-result="{{ form.instance.status|default:'' }}" data-criterion-code="{{ form.instance.criterion.code }}" data-criterion-text="{{ form.instance.criterion.text_ar }}" data-risk-label="{{ form.instance.criterion.get_risk_level_display }}" data-risk-level="{{ form.instance.criterion.risk_level }}">
+                {{ form.id }}
+                <div class="row g-3 align-items-start">
+                  <div class="col-md-5">
+                    <div class="item-text">{{ form.instance.criterion.code }} {{ form.instance.criterion.text_ar }}</div>
+                    <div class="small-muted mt-1">الوزن: {{ form.instance.criterion.weight }}</div>
+                    <div class="criterion-risk-note {{ form.instance.criterion.risk_level }}">
+                      {% if form.instance.criterion.risk_level == 'high' %}
+                        (مستوى الخطورة عالي)
+                      {% elif form.instance.criterion.risk_level == 'medium' %}
+                        (مستوى الخطورة متوسط)
+                      {% elif form.instance.criterion.risk_level == 'low' %}
+                        (مستوى الخطورة منخفض)
+                      {% elif form.instance.criterion.risk_level == 'critical' %}
+                        (مستوى الخطورة حرج)
+                      {% endif %}
+                    </div>
+                    {% with criterion_images=image_map|get_item:form.instance.criterion_id %}{% endwith %}
+                    {% if image_map %}
+                      {% with imgs=image_map|get_item:form.instance.criterion_id %}
+                        {% if imgs %}
+                          <div class="mt-2">
+                            <div class="small-muted mb-1">الصور المرفوعة:</div>
+                            <div class="d-flex flex-wrap gap-2">
+                              {% for image in imgs %}
+                                <div>
+                                  <img src="{{ image.image.url }}" class="preview-image" alt="صورة">
+                                  {% if image.caption %}<div class="small-muted">{{ image.caption }}</div>{% endif %}
+                                </div>
+                              {% endfor %}
+                            </div>
+                          </div>
+                        {% endif %}
+                      {% endwith %}
+                    {% endif %}
+                  </div>
+
+                  <div class="col-md-2">
+                    <label class="form-label">النتيجة</label>
+                    {% with current_status=form.status.value|default:form.instance.status %}
+                    <select name="{{ form.status.html_name }}" id="{{ form.status.id_for_label }}" class="form-select form-select-sm result-select">
+                      <option value="compliant" {% if current_status == 'compliant' %}selected{% endif %}>مستوفي</option>
+                      <option value="non_compliant" {% if current_status == 'non_compliant' %}selected{% endif %}>غير مستوفي</option>
+                      <option value="na" {% if current_status == 'na' %}selected{% endif %}>لا ينطبق</option>
+                      <option value="observation" {% if current_status == 'observation' %}selected{% endif %}>ملاحظة</option>
+                    </select>
+                    {% endwith %}
+                  </div>
+
+                  <div class="col-md-3 remark-wrap {% if form.instance.status == 'non_compliant' or form.instance.status == 'observation' %}is-visible{% endif %}">
+                    <label class="form-label">الملاحظات</label>
+                    {{ form.remarks }}
+                  </div>
+
+                  <div class="col-md-2">
+                    <label class="form-label">إرفاق صورة</label>
+                    <input type="file" name="image_{{ form.instance.id }}" class="form-control form-control-sm" accept="image/*">
+                    <input type="text" name="caption_{{ form.instance.id }}" class="form-control form-control-sm mt-2" placeholder="وصف الصورة">
+                  </div>
+                </div>
+
+                <div class="row g-3 mt-1 corrective-action-wrap {% if form.instance.status == 'non_compliant' %}is-visible{% endif %}">
+                  <div class="col-md-12">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                      <label class="form-label mb-0">الإجراء التصحيحي</label>
+                      <button type="button" class="btn btn-sm btn-outline-success generate-corrective-action-btn">توليد إجراء مباشر</button>
+                    </div>
+                    {{ form.corrective_action }}
+                  </div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+
+    <div class="accordion-item section-card mb-3 shadow-sm">
+      <h2 class="accordion-header" id="headingRecords">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseRecords">
+          ١٢. التوثيق والسجلات المطلوبة
+        </button>
+      </h2>
+      <div id="collapseRecords" class="accordion-collapse collapse" data-bs-parent="#evaluationAccordion">
+        <div class="accordion-body">
+          {% for form in record_formset.forms %}
+            <div class="item-row">
+              {{ form.id }}
+              <div class="row g-3 align-items-center">
+                <div class="col-md-5">
+                  <div class="item-text">{{ form.instance.record.name_ar }}</div>
+                  <div class="small-muted mt-1">درجة السجل: ١ عند التوفر</div>
+                </div>
+                <div class="col-md-2">
+                  <label class="form-label d-block">متوفر</label>
+                  <div class="form-check pt-2">
+                    {{ form.is_available }}
+                  </div>
+                </div>
+                <div class="col-md-5">
+                  <label class="form-label">ملاحظات السجل</label>
+                  {{ form.remarks }}
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mt-4">
+    <div class="card-header bg-success text-white">
+      <h5 class="mb-0">فريق التقييم</h5>
+    </div>
+    <div class="card-body">
+      <div class="alert alert-light border mb-3">
+        سيتم إدراج المفتش الحالي تلقائيًا في تقرير PDF، ويمكنك إضافة أعضاء آخرين للفريق مع المسمى الوظيفي.
+      </div>
+      <div id="teamMembersList" class="d-flex flex-column gap-3">
+        {% for team_form in team_formset.forms %}
+          {% if team_form.instance.pk or team_form.full_name.value or team_form.job_title.value %}
+            <div class="border rounded-4 p-3 team-member-form">
+              {{ team_form.id }}
+              <div class="row g-3 align-items-end">
+                <div class="col-md-5">
+                  <label class="form-label">الاسم</label>
+                  {{ team_form.full_name }}
+                </div>
+                <div class="col-md-5">
+                  <label class="form-label">المسمى الوظيفي</label>
+                  {{ team_form.job_title }}
+                </div>
+                {% if team_formset.can_delete %}
+                  <div class="col-12">
+                    <div class="form-check">
+                      {{ team_form.DELETE }}
+                      <label class="form-check-label" for="{{ team_form.DELETE.id_for_label }}">حذف هذا العضو</label>
+                    </div>
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+      <template id="teamMemberEmptyForm">
+        <div class="border rounded-4 p-3 team-member-form">
+          {{ team_formset.empty_form.id }}
+          <div class="row g-3 align-items-end">
+            <div class="col-md-5">
+              <label class="form-label">الاسم</label>
+              {{ team_formset.empty_form.full_name }}
+            </div>
+            <div class="col-md-5">
+              <label class="form-label">المسمى الوظيفي</label>
+              {{ team_formset.empty_form.job_title }}
+            </div>
+            {% if team_formset.can_delete %}
+              <div class="col-12">
+                <div class="form-check">
+                  {{ team_formset.empty_form.DELETE }}
+                  <label class="form-check-label" for="{{ team_formset.empty_form.DELETE.id_for_label }}">حذف هذا العضو</label>
+                </div>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </template>
+      <div class="team-add-wrap">
+        <button type="button" class="team-add-btn" id="addTeamMemberBtn">
+          <i class="fa-solid fa-user-plus me-1"></i>إضافة شخص
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="d-flex gap-2 mt-4">
+    <button type="submit" class="btn btn-success">حفظ التقييم</button>
+    {% if evaluation.approval_status == 'draft' %}
+      <a href="{% url 'evaluation_submit' evaluation.pk %}" class="btn btn-outline-primary">إنهاء التقييم</a>
+    {% endif %}
+    <a href="{% url 'evaluation_pdf' evaluation.pk %}" class="btn btn-danger" target="_blank">تصدير PDF</a>
+  </div>
+</div>
+</form>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  (function setupAccordionToggleBehavior() {
+    document.querySelectorAll('#evaluationAccordion .accordion-button[data-bs-toggle="collapse"]').forEach(function(button) {
+      button.addEventListener('click', function(event) {
+        const targetSelector = button.getAttribute('data-bs-target');
+        if (!targetSelector) {
+          return;
+        }
+        const target = document.querySelector(targetSelector);
+        if (!target) {
+          return;
+        }
+        if (target.classList.contains('show')) {
+          event.preventDefault();
+          const collapseInstance = bootstrap.Collapse.getOrCreateInstance(target, { toggle: false });
+          collapseInstance.hide();
+        }
+      });
+    });
+  })();
+
+  (function setupEstablishmentLookup() {
+    const lookupInput = document.getElementById('establishmentLookup');
+    const establishmentSelect = document.getElementById('id_meta-establishment');
+    const visitDateInput = document.getElementById('id_meta-visit_date');
+    const hasEvaluationResult = '{{ has_evaluation_result|yesno:"true,false" }}' === 'true';
+    let evaluationStarted = hasEvaluationResult;
+    if (!lookupInput || !establishmentSelect) {
+      return;
+    }
+
+    if (visitDateInput && (!visitDateInput.value || !hasEvaluationResult)) {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      visitDateInput.value = year + '-' + month + '-' + day;
+    }
+
+    const normalizeDigits = function(value) {
+      return (value || '').replace(/[٠-٩]/g, function(d) {
+        return String(d.charCodeAt(0) - 1632);
+      });
+    };
+
+    const optionEntries = Array.from(establishmentSelect.options)
+      .filter(function(option) { return option.value; })
+      .map(function(option) {
+        const pieces = option.text.split(' - ');
+        return {
+          id: option.value,
+          label: option.text.trim(),
+          establishmentNo: (pieces[0] || '').trim(),
+          commercialName: (pieces.slice(1).join(' - ') || '').trim(),
+          normalizedLabel: normalizeDigits(option.text.trim().toLowerCase()),
+        };
+      });
+
+    const updateEstablishmentDetails = function() {
+      const details = document.getElementById('establishmentDetails');
+      const noNode = document.getElementById('selectedEstablishmentNo');
+      const nameNode = document.getElementById('selectedEstablishmentName');
+      const selectedEntry = optionEntries.find(function(entry) {
+        return entry.id === establishmentSelect.value;
+      });
+      if (!details || !noNode || !nameNode) {
+        return;
+      }
+      if (!selectedEntry) {
+        noNode.textContent = '-';
+        nameNode.textContent = '-';
+        details.classList.add('d-none');
+        return;
+      }
+      noNode.textContent = selectedEntry.establishmentNo || '-';
+      nameNode.textContent = selectedEntry.commercialName || selectedEntry.label;
+      details.classList.remove('d-none');
+    };
+
+    const toggleEvaluationVisibility = function() {
+      const hasSelection = !!establishmentSelect.value;
+      const hint = document.getElementById('establishmentHint');
+      const startAction = document.getElementById('startEvaluationAction');
+      const content = document.getElementById('evaluationContent');
+      const showItems = hasSelection && (hasEvaluationResult || evaluationStarted);
+      if (hint) {
+        hint.classList.toggle('d-none', hasSelection);
+      }
+      if (startAction) {
+        startAction.classList.toggle('d-none', !hasSelection || hasEvaluationResult || evaluationStarted);
+      }
+      if (content) {
+        content.classList.toggle('d-none', !showItems);
+      }
+      updateEstablishmentDetails();
+    };
+
+    const syncSelectionFromLookup = function() {
+      const typed = normalizeDigits(lookupInput.value.trim().toLowerCase());
+      if (!typed) {
+        establishmentSelect.value = '';
+        evaluationStarted = hasEvaluationResult;
+        toggleEvaluationVisibility();
+        return;
+      }
+
+      const exact = optionEntries.find(function(entry) {
+        return entry.normalizedLabel === typed;
+      });
+      if (exact) {
+        establishmentSelect.value = exact.id;
+        lookupInput.value = exact.label;
+        evaluationStarted = hasEvaluationResult;
+        toggleEvaluationVisibility();
+        return;
+      }
+
+      const startsWith = optionEntries.filter(function(entry) {
+        return entry.normalizedLabel.startsWith(typed + ' -') || entry.normalizedLabel.startsWith(typed);
+      });
+      if (startsWith.length === 1) {
+        establishmentSelect.value = startsWith[0].id;
+        lookupInput.value = startsWith[0].label;
+        evaluationStarted = hasEvaluationResult;
+      } else {
+        establishmentSelect.value = '';
+        evaluationStarted = hasEvaluationResult;
+      }
+      toggleEvaluationVisibility();
+    };
+
+    const syncOnInput = function() {
+      const typed = normalizeDigits(lookupInput.value.trim().toLowerCase());
+      if (!typed) {
+        establishmentSelect.value = '';
+        evaluationStarted = hasEvaluationResult;
+        toggleEvaluationVisibility();
+        return;
+      }
+      const exact = optionEntries.find(function(entry) {
+        return entry.normalizedLabel === typed;
+      });
+      if (exact) {
+        establishmentSelect.value = exact.id;
+        lookupInput.value = exact.label;
+        evaluationStarted = hasEvaluationResult;
+      } else {
+        establishmentSelect.value = '';
+        evaluationStarted = hasEvaluationResult;
+      }
+      toggleEvaluationVisibility();
+    };
+
+    if (!hasEvaluationResult) {
+      establishmentSelect.value = '';
+      lookupInput.value = '';
+    }
+    toggleEvaluationVisibility();
+
+    lookupInput.addEventListener('change', syncSelectionFromLookup);
+    lookupInput.addEventListener('blur', syncSelectionFromLookup);
+    lookupInput.addEventListener('input', syncOnInput);
+    establishmentSelect.addEventListener('change', function() {
+      evaluationStarted = hasEvaluationResult;
+      toggleEvaluationVisibility();
+    });
+
+    const startButton = document.getElementById('startEvaluationBtn');
+    if (startButton) {
+      startButton.addEventListener('click', function() {
+        evaluationStarted = true;
+        toggleEvaluationVisibility();
+        const content = document.getElementById('evaluationContent');
+        if (content && !content.classList.contains('d-none')) {
+          content.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
+    }
+  })();
+
+  (function setupTeamMemberFormset() {
+    const addButton = document.getElementById('addTeamMemberBtn');
+    const list = document.getElementById('teamMembersList');
+    const template = document.getElementById('teamMemberEmptyForm');
+    const totalFormsInput = document.getElementById('id_team-TOTAL_FORMS');
+    if (!addButton || !list || !template || !totalFormsInput) {
+      return;
+    }
+
+    addButton.addEventListener('click', function() {
+      const formIndex = parseInt(totalFormsInput.value, 10);
+      const html = template.innerHTML.replace(/__prefix__/g, String(formIndex));
+      list.insertAdjacentHTML('beforeend', html);
+      totalFormsInput.value = String(formIndex + 1);
+      const addedForms = list.querySelectorAll('.team-member-form');
+      const lastForm = addedForms[addedForms.length - 1];
+      if (lastForm) {
+        const nameInput = lastForm.querySelector('input[type="text"]');
+        if (nameInput) {
+          nameInput.focus();
+        }
+      }
+    });
+  })();
+
+  function refreshNonCompliantStyles() {
+    document.querySelectorAll('.evaluation-item-row').forEach(function(row) {
+      const select = row.querySelector('select');
+      if (!select) return;
+      row.dataset.result = select.value;
+      const remarkWrap = row.querySelector('.remark-wrap');
+      const correctiveActionWrap = row.querySelector('.corrective-action-wrap');
+      const needsRemark = select.value === 'non_compliant' || select.value === 'observation';
+      const needsCorrectiveAction = select.value === 'non_compliant';
+      if (select.value === 'non_compliant') {
+        row.classList.add('item-non-compliant');
+      } else {
+        row.classList.remove('item-non-compliant');
+      }
+      if (remarkWrap) {
+        remarkWrap.classList.toggle('is-visible', needsRemark);
+      }
+      if (correctiveActionWrap) {
+        correctiveActionWrap.classList.toggle('is-visible', needsCorrectiveAction);
+      }
+      if (needsCorrectiveAction) {
+        const correctiveActionField = row.querySelector('.corrective-action-field');
+        if (correctiveActionField && !correctiveActionField.value.trim()) {
+          correctiveActionField.value = buildCorrectiveActionText(row);
+        }
+      }
+    });
+  }
+
+  function getReadyCorrectiveActionText(criterionCode) {
+    const readyByCode = {
+          "2.1": "نقل النشاط أو إنشاء حواجز عازلة (أسوار/فلاتر/تشجير) مع تقييم بيئي دوري لمصادر التلوث.",
+          "2.2": "إعادة تصميم مسار الإنتاج (Flow) وفصل مناطق الخام والمعالجة والمنتج النهائي بحواجز واضحة.",
+          "2.3": "إصلاح الشقوق واستخدام أرضيات مانعة للانزلاق ومقاومة للمواد الكيميائية وسهلة التنظيف.",
+          "2.4": "إعادة طلاء أو تغطية الجدران بمواد ملساء غير منفذة وقابلة للغسيل والتعقيم.",
+          "2.5": "تنظيف وصيانة الأسقف ومنع التكثف وتركيب عوازل لمنع نمو الفطريات وتساقط الأوساخ.",
+          "2.6": "تحسين الإضاءة وتركيب أغطية حماية للمصابيح (Shatterproof) لمنع تلوث المنتجات.",
+          "2.7": "تركيب نظام تهوية فعال يضمن تدفق الهواء من المناطق النظيفة إلى الملوثة والتحكم بالرطوبة.",
+          "2.8": "تركيب شبك معدني دقيق وصيانته بشكل دوري لمنع دخول الحشرات والقوارض.",
+          "2.9": "استبدال أو صيانة الأبواب لتكون ملساء وتغلق تلقائياً وتمنع دخول الملوثات.",
+          "2.10": "استخدام نوافذ مقاومة للصدأ مزودة بشبك حشري وتنظيفها بشكل دوري.",
+          "2.11": "صيانة وتنظيف مستمر وضمان تصميم يمنع سقوط أو انتقال الملوثات للأغذية.",
+          "2.12": "رصف الأرضيات وتحسين التصريف لمنع تجمع المياه والأتربة وتسهيل التنظيف.",
+          "3.1": "توثيق مصدر المياه رسمياً (شهادة/ترخيص) واعتماد مصدر مطابق وإيقاف أي مصدر غير معتمد فوراً.",
+          "3.2": "تنفيذ برنامج تحاليل دورية (ميكروبيولوجي وكيميائي) عبر مختبر معتمد وتوثيق النتائج واتخاذ إجراء فوري عند عدم المطابقة.",
+          "3.3": "فصل شبكات الصرف بالكامل ومنع أي تداخل أو رجوع عكسي (Backflow) مع صيانة دورية للشبكات.",
+          "3.4": "تعديل ميول الأرضيات نحو المصارف وتنظيفها وتركيب أغطية وسيفون لمنع الروائح ودخول الحشرات.",
+          "4.1": "توفير غرف تغيير منفصلة مزودة بدواليب شخصية نظيفة مع برنامج تنظيف وصيانة دوري.",
+          "4.2": "إنشاء/تعديل دورات المياه بحيث لا تفتح على الإنتاج مع تحسين التهوية والإضاءة والتنظيف المستمر.",
+          "4.3": "تركيب مغاسل تعمل بالقدم/الحساس وتوفير صابون مطهر ومناشف أحادية الاستخدام بشكل دائم.",
+          "4.4": "إلزام العمال بارتداء زي موحد نظيف + أغطية رأس + قفازات حسب نوع المنتج مع رقابة يومية.",
+          "4.5": "تطبيق برنامج إلزامي لغسل اليدين مع لوحات إرشادية ومراقبة الالتزام.",
+          "4.6": "منع ارتداء الحلي والساعات والأظافر الصناعية داخل الإنتاج مع التفتيش اليومي.",
+          "4.7": "تطبيق نظام فحص صحي دوري ومنع العامل المصاب مؤقتاً حتى الشفاء.",
+          "4.8": "حظر الأكل والشرب والتدخين داخل الإنتاج ووضع لوحات توعوية وتطبيق رقابة صارمة.",
+          "5.1": "استبدال أو تغطية الأسطح بمواد Food Grade ملساء غير ماصة وغير سامة وسهلة التنظيف.",
+          "5.2": "تعديل أو استبدال المعدات لضمان عدم تراكم بقايا الغذاء وسهولة التفكيك والتنظيف.",
+          "5.3": "إعادة ترتيب وتثبيت المعدات مع توفير مسافات كافية تسمح بالتنظيف حولها وتحتها.",
+          "5.4": "إعداد وتنفيذ برنامج صيانة وقائية موثق مع سجلات متابعة دورية.",
+          "5.5": "توفير أجهزة قياس معتمدة ومعايرتها دورياً وتوثيق نتائج المعايرة.",
+          "6.1": "التعاقد مع شركة مرخصة لمكافحة الآفات وتنفيذ برنامج دوري موثق.",
+          "6.2": "إعداد وتحديث خريطة مواقع المصائد والطعوم مع ترقيمها ومراجعتها دورياً.",
+          "6.3": "إنشاء وتحديث سجل متابعة الآفات واتخاذ إجراء فوري عند أي نشاط.",
+          "6.4": "تخزين المبيدات في غرفة مغلقة منفصلة واستخدامها فقط بواسطة أشخاص مدربين.",
+          "7.1": "إعداد برنامج تنظيف وتطهير شامل ومعتمد يغطي جميع المناطق والمعدات وتحديثه دورياً.",
+          "7.2": "استخدام مواد تنظيف معتمدة Food Grade والتأكد من صلاحيتها وتخزينها بشكل آمن.",
+          "7.3": "إنشاء وتحديث سجلات تنظيف يومية مع التحقق من التنفيذ والتوقيع.",
+          "7.4": "تعيين مسؤول نظافة وتدريب الفريق وتحديد مهام واضحة ومتابعتها.",
+          "7.5": "تطبيق أنظمة تنظيف آلي (CIP) أو يدوي فعال مع التحقق من كفاءة التطهير.",
+          "8.1": "تشكيل فريق مؤهل متعدد التخصصات وتحديد مسؤوليات واضحة وتوثيق ذلك.",
+          "8.2": "إعداد وتوثيق وصف شامل للمنتج يشمل المكونات والاستخدام والمستهلك المستهدف.",
+          "8.3": "إعداد مخطط تدفق دقيق والتحقق منه ميدانياً وتحديثه عند أي تغيير.",
+          "8.4": "إجراء تحليل مخاطر شامل (بيولوجي/كيميائي/فيزيائي) لكل مرحلة إنتاج.",
+          "8.5": "استخدام شجرة القرار لتحديد نقاط التحكم الحرجة وتوثيقها.",
+          "8.6": "تحديد حدود حرجة واضحة وقابلة للقياس لكل CCP.",
+          "8.7": "تطبيق نظام مراقبة محدد (ماذا/كيف/متى/من) لكل CCP وتوثيقه.",
+          "8.8": "تحديد إجراءات تصحيحية فورية عند تجاوز الحدود الحرجة ومنع تكرار الانحراف.",
+          "8.9": "تنفيذ برنامج تحقق دوري (معايرة، فحوصات، تدقيق داخلي) لضمان فعالية النظام.",
+          "8.10": "حفظ ومراجعة سجلات CCP بشكل منتظم من قبل مسؤول مؤهل.",
+          "9.1": "تطبيق نظام تتبع شامل (Traceability) باستخدام أكواد تشغيل/تشغيلة يربط المواد الخام بالإنتاج والتوزيع.",
+          "9.2": "إنشاء سجلات إنتاج يومية (تاريخ، خط، كود، كمية) ومراجعتها واعتمادها بشكل منتظم.",
+          "9.3": "إعداد خطة استرجاع مكتوبة واختبارها عملياً مرة سنوياً وتوثيق النتائج وتحسينها.",
+          "10.1": "إنشاء مختبر داخلي مجهز أو التعاقد مع مختبر معتمد وإثبات ذلك بشهادات رسمية.",
+          "10.2": "تطبيق برنامج سحب عينات دوري من الإنتاج والمنتج النهائي وتحليلها وتوثيق النتائج.",
+          "10.3": "فحص المواد الخام عالية الخطورة قبل الاستلام ورفض غير المطابق منها.",
+          "10.4": "حفظ وتحليل النتائج واتخاذ إجراءات تصحيحية فورية عند عدم المطابقة.",
+          "11.1": "إعداد وتنفيذ خطة تدريب سنوية معتمدة تغطي جميع العاملين وتحديثها دورياً.",
+          "11.2": "تدريب العاملين حسب مهامهم على النظافة والتلوث المتبادل وHACCP مع تقييم كفاءتهم.",
+          "11.3": "إنشاء وتحديث سجلات تدريب موثقة لكل موظف مع حفظها ومراجعتها."
+    };
+
+    const readyBySection = {};
+
+    const normalizedCode = (criterionCode || '').trim().replace(/[٠-٩]/g, function(d) {
+      return String(d.charCodeAt(0) - 1632);
+    });
+    if (readyByCode[normalizedCode]) {
+      return readyByCode[normalizedCode];
+    }
+    const sectionPrefix = normalizedCode.split('.', 1)[0];
+    return readyBySection[sectionPrefix] || '';
+  }
+
+  function buildCorrectiveActionText(row) {
+    const criterionCode = (row.dataset.criterionCode || '').trim();
+    const criterionText = (row.dataset.criterionText || '').trim();
+    const riskLabel = (row.dataset.riskLabel || '').trim();
+    const readyText = getReadyCorrectiveActionText(criterionCode);
+    if (readyText) {
+      return readyText;
+    }
+    const riskLevel = (row.dataset.riskLevel || '').trim();
+    let timeline = 'خلال 14 يوما';
+    let stepTwo = 'تنفيذ تحسين تشغيلي ومعالجة سبب عدم الاستيفاء.';
+    let stepThree = 'التحقق الدوري من الفاعلية وتوثيق الاغلاق النهائي.';
+
+    if (riskLevel === 'critical') {
+      timeline = 'خلال 24 ساعة';
+      stepTwo = 'تنفيذ اجراء احتواء فوري وايقاف الممارسة الخطرة حتى تصحيحها بالكامل.';
+      stepThree = 'التحقق الموقعي من الفاعلية خلال 24-48 ساعة مع اعتماد المراجع الفني.';
+    } else if (riskLevel === 'high') {
+      timeline = 'خلال 3 ايام';
+      stepTwo = 'تنفيذ اجراء تصحيحي عاجل يمنع تكرار عدم الاستيفاء.';
+      stepThree = 'التحقق من الفاعلية خلال 3-5 ايام وتوثيق نتائج المتابعة.';
+    } else if (riskLevel === 'medium') {
+      timeline = 'خلال 7 ايام';
+      stepTwo = 'تنفيذ الاجراء التصحيحي وفق خطة عمل محددة بالمسؤوليات.';
+      stepThree = 'التحقق من الفاعلية خلال 7-10 ايام وتحديث السجلات.';
+    }
+
+    let riskPhrase = '(مستوى الخطورة ' + riskLabel + ')';
+    if (riskLevel === 'high') {
+      riskPhrase = '(مستوى الخطورة عالي)';
+    } else if (riskLevel === 'medium') {
+      riskPhrase = '(مستوى الخطورة متوسط)';
+    } else if (riskLevel === 'low') {
+      riskPhrase = '(مستوى الخطورة منخفض)';
+    } else if (riskLevel === 'critical') {
+      riskPhrase = '(مستوى الخطورة حرج)';
+    }
+
+    return [
+      '1) معالجة عدم الاستيفاء في البند ' + criterionCode + ' (' + criterionText + ') وإزالة السبب الجذري.',
+      '2) ' + stepTwo,
+      '3) ' + stepThree,
+      '4) تاريخ الاغلاق المستهدف: ' + timeline + '.',
+      riskPhrase + '.'
+    ].join('\n');
+  }
+  function applyFilter() {
+    const checkbox = document.getElementById('showNonCompliantOnly');
+    const checked = checkbox ? checkbox.checked : false;
+    document.querySelectorAll('.evaluation-item-row').forEach(function(row) {
+      const result = row.dataset.result;
+      row.style.display = checked ? ((result === 'non_compliant') ? '' : 'none') : '';
+    });
+  }
+  document.addEventListener('change', function(e) {
+    if (e.target.matches('.result-select')) {
+      refreshNonCompliantStyles();
+      applyFilter();
+    }
+  });
+  document.addEventListener('click', function(e) {
+    if (!e.target.matches('.generate-corrective-action-btn')) {
+      return;
+    }
+    const row = e.target.closest('.evaluation-item-row');
+    if (!row) {
+      return;
+    }
+    const correctiveActionField = row.querySelector('.corrective-action-field');
+    if (!correctiveActionField) {
+      return;
+    }
+    correctiveActionField.value = buildCorrectiveActionText(row);
+    correctiveActionField.focus();
+  });
+  var filterCheckbox = document.getElementById('showNonCompliantOnly');
+  if (filterCheckbox) {
+    filterCheckbox.addEventListener('change', applyFilter);
+  }
+  refreshNonCompliantStyles();
+  applyFilter();
+</script>
+{% endblock %}

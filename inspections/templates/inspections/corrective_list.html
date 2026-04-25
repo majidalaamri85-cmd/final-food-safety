@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+{% load inspection_extras %}
+{% block breadcrumb %}<li class="breadcrumb-item active" aria-current="page">الإجراءات التصحيحية</li>{% endblock %}
+{% block content %}
+
+<div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+  <div>
+    <h1><i class="fa-solid fa-circle-exclamation text-warning me-2"></i>الإجراءات التصحيحية</h1>
+    <div class="sub">متابعة الإجراءات المفتوحة والمغلقة لجميع التقييمات</div>
+  </div>
+  <a class="btn btn-success px-4" href="/corrective-actions/new/">
+    <i class="fa-solid fa-plus me-1"></i>إضافة إجراء
+  </a>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+    <table class="table table-hover mb-0 align-middle">
+      <thead>
+        <tr>
+          <th><i class="fa-solid fa-tag fa-xs me-1"></i>العنوان</th>
+          <th><i class="fa-solid fa-clipboard-list fa-xs me-1"></i>التقييم</th>
+          <th><i class="fa-solid fa-user fa-xs me-1"></i>المسؤول</th>
+          <th><i class="fa-solid fa-calendar fa-xs me-1"></i>الاستحقاق</th>
+          <th class="text-center"><i class="fa-solid fa-circle-dot fa-xs me-1"></i>الحالة</th>
+          <th class="text-center"><i class="fa-solid fa-pen-to-square fa-xs me-1"></i>الإجراء</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in actions %}
+        <tr>
+          <td><div class="fw-semibold">{{ a.title }}</div></td>
+          <td><span class="small text-muted">{{ a.evaluation.establishment }} - {{ a.evaluation.visit_date|date:"Y/m/d"|arabic_digits }}</span></td>
+          <td>{{ a.assigned_to }}</td>
+          <td>{{ a.due_date|date:"Y/m/d"|arabic_digits }}</td>
+          <td class="text-center">
+            {% if a.status == 'closed' %}
+              <span class="badge bg-success-subtle text-success border border-success border-opacity-25 rounded-pill px-3"><i class="fa-solid fa-circle-check me-1"></i>مغلق</span>
+            {% elif a.status == 'open' %}
+              <span class="badge bg-danger-subtle text-danger border border-danger border-opacity-25 rounded-pill px-3"><i class="fa-solid fa-circle-xmark me-1"></i>مفتوح</span>
+            {% elif a.status == 'in_progress' %}
+              <span class="badge bg-primary-subtle text-primary border border-primary border-opacity-25 rounded-pill px-3"><i class="fa-solid fa-spinner me-1"></i>قيد التنفيذ</span>
+            {% elif a.status == 'overdue' %}
+              <span class="badge bg-dark-subtle text-dark border border-dark border-opacity-25 rounded-pill px-3"><i class="fa-solid fa-clock me-1"></i>متأخر</span>
+            {% else %}
+              <span class="badge bg-secondary-subtle text-secondary border border-secondary border-opacity-25 rounded-pill px-3">{{ a.get_status_display }}</span>
+            {% endif %}
+          </td>
+          <td class="text-center">
+            <a class="btn btn-sm btn-outline-primary" href="{% url 'corrective_action_update' a.pk %}">
+              <i class="fa-solid fa-pen me-1"></i>تعديل
+            </a>
+            <a class="btn btn-sm btn-outline-secondary ms-1" href="{% url 'evaluation_update' a.evaluation.pk %}">
+              <i class="fa-solid fa-up-right-from-square me-1"></i>فتح التقييم
+            </a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-center p-5 text-muted">
+          <i class="fa-regular fa-folder-open fa-2x mb-2 d-block"></i>لا توجد إجراءات تصحيحية
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,404 @@
+{% extends 'base.html' %}
+{% block title %}إضافة منشأة{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="mb-0">إضافة منشأة جديدة</h1>
+  <a class="btn btn-outline-secondary" href="/establishments/">رجوع</a>
+</div>
+<div class="card shadow-sm">
+  <div class="card-body">
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      <datalist id="isic-activities">
+        {% for code, label in isic_activities %}
+          <option value="{{ code }} - {{ label }}"></option>
+        {% endfor %}
+      </datalist>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">{{ form.governorate.label }}</label>
+          {{ form.governorate }}
+          {% if form.governorate.errors %}<div class="text-danger small">{{ form.governorate.errors }}</div>{% endif %}
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">{{ form.wilayat.label }}</label>
+          {{ form.wilayat }}
+          {% if form.wilayat.errors %}<div class="text-danger small">{{ form.wilayat.errors }}</div>{% endif %}
+        </div>
+
+        <div class="col-12"><hr class="my-1"></div>
+        <div class="col-12"><h5 class="mb-1">البيانات الأساسية</h5></div>
+
+        <div class="col-md-3">
+          <label class="form-label">{{ form.establishment_no.label }}</label>
+          {{ form.establishment_no }}
+          <div class="form-text">يُولَّد تلقائياً إذا تُرك فارغاً</div>
+          {% if form.establishment_no.errors %}<div class="text-danger small">{{ form.establishment_no.errors }}</div>{% endif %}
+        </div>
+        <div class="col-md-5">
+          <label class="form-label">{{ form.commercial_name.label }}</label>
+          {{ form.commercial_name }}
+          {% if form.commercial_name.errors %}<div class="text-danger small">{{ form.commercial_name.errors }}</div>{% endif %}
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">{{ form.activity_type.label }}</label>
+          {{ form.activity_type }}
+          <div class="form-text">القائمة مبنية على أنشطة آيسك 4 ذات الصلة بالأنشطة الغذائية، ويمكن البحث بالكتابة داخل الخانة.</div>
+          {% if form.activity_type.errors %}<div class="text-danger small">{{ form.activity_type.errors }}</div>{% endif %}
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">{{ form.license_no.label }}</label>
+          {{ form.license_no }}
+          {% if form.license_no.errors %}<div class="text-danger small">{{ form.license_no.errors }}</div>{% endif %}
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">{{ form.commercial_reg.label }}</label>
+          {{ form.commercial_reg }}
+          {% if form.commercial_reg.errors %}<div class="text-danger small">{{ form.commercial_reg.errors }}</div>{% endif %}
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">{{ form.manager_name.label }}</label>
+          {{ form.manager_name }}
+          {% if form.manager_name.errors %}<div class="text-danger small">{{ form.manager_name.errors }}</div>{% endif %}
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">{{ form.contact_phone.label }}</label>
+          {{ form.contact_phone }}
+          {% if form.contact_phone.errors %}<div class="text-danger small">{{ form.contact_phone.errors }}</div>{% endif %}
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">{{ form.contact_email.label }}</label>
+          {{ form.contact_email }}
+          {% if form.contact_email.errors %}<div class="text-danger small">{{ form.contact_email.errors }}</div>{% endif %}
+        </div>
+
+        <div class="col-12"><hr class="my-1"></div>
+        <div class="col-12"><h5 class="mb-1">البيانات التشغيلية</h5></div>
+
+        <div class="col-md-4">
+          <label class="form-label">{{ form.employee_count.label }}</label>
+          {{ form.employee_count }}
+          {% if form.employee_count.errors %}<div class="text-danger small">{{ form.employee_count.errors }}</div>{% endif %}
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">{{ form.production_capacity.label }}</label>
+          {{ form.production_capacity }}
+          {% if form.production_capacity.errors %}<div class="text-danger small">{{ form.production_capacity.errors }}</div>{% endif %}
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">{{ form.status.label }}</label>
+          {{ form.status }}
+          {% if form.status.errors %}<div class="text-danger small">{{ form.status.errors }}</div>{% endif %}
+        </div>
+        <div class="col-12">
+          <label class="form-label">{{ form.product_types.label }}</label>
+          {{ form.product_types }}
+          {% if form.product_types.errors %}<div class="text-danger small">{{ form.product_types.errors }}</div>{% endif %}
+        </div>
+
+        <div class="col-12"><hr class="my-1"></div>
+        <div class="col-12"><h5 class="mb-1">6. المستندات</h5></div>
+
+        <div class="col-md-6">
+          <label class="form-label fw-semibold"><i class="fa-solid fa-file-lines me-1 text-success"></i>{{ form.doc_commercial_register.label }}</label>
+          {{ form.doc_commercial_register }}
+          <div id="commercial-register-file-ui" class="d-flex align-items-center gap-2 mt-2"></div>
+          {% if form.doc_commercial_register.value %}
+            <div class="form-text"><i class="fa-solid fa-paperclip me-1"></i><a href="{{ form.doc_commercial_register.value.url }}" target="_blank">{{ form.doc_commercial_register.value.name|cut:'establishment_docs/' }}</a></div>
+          {% endif %}
+          {% if form.doc_commercial_register.errors %}<div class="text-danger small">{{ form.doc_commercial_register.errors }}</div>{% endif %}
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold"><i class="fa-solid fa-building-columns me-1 text-success"></i>{{ form.doc_municipal_license.label }}</label>
+          {{ form.doc_municipal_license }}
+          <div id="municipal-license-file-ui" class="d-flex align-items-center gap-2 mt-2"></div>
+          {% if form.doc_municipal_license.value %}
+            <div class="form-text"><i class="fa-solid fa-paperclip me-1"></i><a href="{{ form.doc_municipal_license.value.url }}" target="_blank">{{ form.doc_municipal_license.value.name|cut:'establishment_docs/' }}</a></div>
+          {% endif %}
+          {% if form.doc_municipal_license.errors %}<div class="text-danger small">{{ form.doc_municipal_license.errors }}</div>{% endif %}
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold"><i class="fa-solid fa-certificate me-1 text-success"></i>{{ form.doc_quality_certificates.label }}</label>
+          {{ form.doc_quality_certificates }}
+          <div id="quality-certificates-file-ui" class="d-flex align-items-center gap-2 mt-2"></div>
+          {% if form.doc_quality_certificates.value %}
+            <div class="form-text"><i class="fa-solid fa-paperclip me-1"></i><a href="{{ form.doc_quality_certificates.value.url }}" target="_blank">{{ form.doc_quality_certificates.value.name|cut:'establishment_docs/' }}</a></div>
+          {% endif %}
+          {% if form.doc_quality_certificates.errors %}<div class="text-danger small">{{ form.doc_quality_certificates.errors }}</div>{% endif %}
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold"><i class="fa-solid fa-drafting-compass me-1 text-success"></i>{{ form.doc_factory_layout.label }}</label>
+          {{ form.doc_factory_layout }}
+          <div id="factory-layout-file-ui" class="d-flex align-items-center gap-2 mt-2"></div>
+          {% if form.doc_factory_layout.value %}
+            <div class="form-text"><i class="fa-solid fa-paperclip me-1"></i><a href="{{ form.doc_factory_layout.value.url }}" target="_blank">{{ form.doc_factory_layout.value.name|cut:'establishment_docs/' }}</a></div>
+          {% endif %}
+          {% if form.doc_factory_layout.errors %}<div class="text-danger small">{{ form.doc_factory_layout.errors }}</div>{% endif %}
+        </div>
+
+        <div class="col-12"><hr class="my-1"></div>
+        <div class="col-12"><h5 class="mb-1">الموقع</h5></div>
+        <div class="col-md-8">
+          <label class="form-label">{{ form.direct_location_url.label }}</label>
+          <div class="input-group">
+            {{ form.direct_location_url }}
+            <a id="location-preview-btn" href="#" target="_blank" class="btn btn-outline-success d-none">
+              <i class="fa-solid fa-map-location-dot me-1"></i>فتح الموقع
+            </a>
+          </div>
+          <div class="form-text mt-2">إضغط على الخريطة لتحديد الموقع المباشر.</div>
+          <div class="d-flex align-items-center gap-2 mt-2">
+            <button type="button" id="use-current-location-btn" class="btn btn-outline-primary btn-sm">
+              <i class="fa-solid fa-location-crosshairs me-1"></i>تحديد موقعي الحالي
+            </button>
+            <span id="current-location-status" class="small text-muted"></span>
+          </div>
+          <div id="direct-location-map" class="rounded border mt-2" style="height: 320px;"></div>
+          {% if form.direct_location_url.errors %}<div class="text-danger small">{{ form.direct_location_url.errors }}</div>{% endif %}
+        </div>
+      </div>
+      <div class="mt-4 d-flex gap-2">
+        <button type="submit" class="btn btn-success">حفظ المنشأة</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{{ wilayats|json_script:"wilayats-data" }}
+<script>
+  // Location URL preview button
+  const locationInput = document.getElementById('id_direct_location_url');
+  const locationBtn = document.getElementById('location-preview-btn');
+  const locationMapElement = document.getElementById('direct-location-map');
+  const useCurrentLocationBtn = document.getElementById('use-current-location-btn');
+  const currentLocationStatus = document.getElementById('current-location-status');
+
+  function parseGoogleMapsLatLng(url) {
+    if (!url) {
+      return null;
+    }
+
+    const atMatch = url.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
+    if (atMatch) {
+      return [parseFloat(atMatch[1]), parseFloat(atMatch[2])];
+    }
+
+    const qMatch = url.match(/[?&]q=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
+    if (qMatch) {
+      return [parseFloat(qMatch[1]), parseFloat(qMatch[2])];
+    }
+
+    return null;
+  }
+
+  function buildGoogleMapsUrl(lat, lng) {
+    return 'https://maps.google.com/?q=' + lat.toFixed(6) + ',' + lng.toFixed(6);
+  }
+
+  function loadLeafletAssets() {
+    return new Promise(function(resolve, reject) {
+      if (window.L) {
+        resolve();
+        return;
+      }
+
+      const leafletCssId = 'leaflet-css';
+      const leafletJsId = 'leaflet-js';
+
+      if (!document.getElementById(leafletCssId)) {
+        const leafletCss = document.createElement('link');
+        leafletCss.id = leafletCssId;
+        leafletCss.rel = 'stylesheet';
+        leafletCss.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+        document.head.appendChild(leafletCss);
+      }
+
+      const existingScript = document.getElementById(leafletJsId);
+      if (existingScript) {
+        existingScript.addEventListener('load', resolve);
+        existingScript.addEventListener('error', reject);
+        return;
+      }
+
+      const leafletJs = document.createElement('script');
+      leafletJs.id = leafletJsId;
+      leafletJs.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+      leafletJs.onload = resolve;
+      leafletJs.onerror = reject;
+      document.body.appendChild(leafletJs);
+    });
+  }
+  if (locationInput && locationBtn) {
+    function updateLocationBtn() {
+      const val = locationInput.value.trim();
+      if (val) {
+        locationBtn.href = val;
+        locationBtn.classList.remove('d-none');
+      } else {
+        locationBtn.classList.add('d-none');
+      }
+    }
+    locationInput.addEventListener('input', updateLocationBtn);
+    updateLocationBtn();
+  }
+
+  if (locationInput && locationMapElement) {
+    loadLeafletAssets()
+      .then(function() {
+        const defaultCenter = [23.5880, 58.3829];
+        const parsed = parseGoogleMapsLatLng(locationInput.value.trim());
+        const initialCenter = parsed || defaultCenter;
+
+        const map = L.map('direct-location-map').setView(initialCenter, parsed ? 15 : 7);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19,
+          attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        let marker = null;
+
+        function setLocation(lat, lng, shouldPan) {
+          locationInput.value = buildGoogleMapsUrl(lat, lng);
+          if (locationBtn) {
+            locationBtn.href = locationInput.value;
+            locationBtn.classList.remove('d-none');
+          }
+
+          if (!marker) {
+            marker = L.marker([lat, lng]).addTo(map);
+          } else {
+            marker.setLatLng([lat, lng]);
+          }
+
+          if (shouldPan) {
+            map.setView([lat, lng], 15);
+          }
+        }
+
+        if (parsed) {
+          setLocation(parsed[0], parsed[1], false);
+        }
+
+        map.on('click', function(e) {
+          setLocation(e.latlng.lat, e.latlng.lng, false);
+        });
+
+        if (useCurrentLocationBtn) {
+          useCurrentLocationBtn.addEventListener('click', function() {
+            if (!navigator.geolocation) {
+              if (currentLocationStatus) {
+                currentLocationStatus.textContent = 'المتصفح لا يدعم تحديد الموقع الحالي.';
+                currentLocationStatus.className = 'small text-danger';
+              }
+              return;
+            }
+
+            if (currentLocationStatus) {
+              currentLocationStatus.textContent = 'جاري تحديد موقعك...';
+              currentLocationStatus.className = 'small text-muted';
+            }
+
+            navigator.geolocation.getCurrentPosition(
+              function(position) {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                setLocation(lat, lng, true);
+                if (currentLocationStatus) {
+                  currentLocationStatus.textContent = 'تم تحديد موقعك الحالي بنجاح.';
+                  currentLocationStatus.className = 'small text-success';
+                }
+              },
+              function() {
+                if (currentLocationStatus) {
+                  currentLocationStatus.textContent = 'تعذر تحديد موقعك. تأكد من السماح بصلاحية الموقع.';
+                  currentLocationStatus.className = 'small text-danger';
+                }
+              },
+              {
+                enableHighAccuracy: true,
+                timeout: 12000,
+                maximumAge: 0
+              }
+            );
+          });
+        }
+
+        // Keep map rendering correct after layout settles.
+        setTimeout(function() {
+          map.invalidateSize();
+        }, 250);
+      })
+      .catch(function() {
+        locationMapElement.innerHTML = '<div class="p-3 text-danger small">تعذر تحميل الخريطة حالياً. يمكنك إدخال الرابط يدوياً.</div>';
+      });
+  }
+
+  const governorateSelect = document.getElementById('id_governorate');
+  const wilayatSelect = document.getElementById('id_wilayat');
+  const wilayats = JSON.parse(document.getElementById('wilayats-data').textContent);
+  const initialWilayat = wilayatSelect.value;
+
+  function renderWilayats() {
+    const selectedGovernorate = governorateSelect.value;
+    wilayatSelect.innerHTML = '<option value="">اختر الولاية</option>';
+    wilayats
+      .filter(function(item) { return !selectedGovernorate || String(item.governorate_id) === String(selectedGovernorate); })
+      .forEach(function(item) {
+        const option = document.createElement('option');
+        option.value = item.id;
+        option.textContent = item.name_ar;
+        if (String(item.id) === String(initialWilayat) || String(item.id) === String(wilayatSelect.dataset.pendingValue)) {
+          option.selected = true;
+        }
+        wilayatSelect.appendChild(option);
+      });
+  }
+
+  wilayatSelect.dataset.pendingValue = initialWilayat;
+  governorateSelect.addEventListener('change', function() {
+    wilayatSelect.dataset.pendingValue = '';
+    renderWilayats();
+  });
+  renderWilayats();
+
+  // Replace browser default "no file selected" text with Arabic helper labels.
+  function initCustomFileInput(inputId, containerId, placeholderText) {
+    const fileInput = document.getElementById(inputId);
+    const customUi = document.getElementById(containerId);
+    if (!fileInput || !customUi) {
+      return;
+    }
+
+    fileInput.classList.add('d-none');
+
+    const triggerBtn = document.createElement('button');
+    triggerBtn.type = 'button';
+    triggerBtn.className = 'btn btn-outline-success btn-sm';
+    triggerBtn.innerHTML = '<i class="fa-solid fa-upload me-1"></i>اختيار ملف';
+
+    const fileName = document.createElement('span');
+    fileName.className = 'text-muted small';
+    fileName.textContent = placeholderText;
+
+    triggerBtn.addEventListener('click', function() {
+      fileInput.click();
+    });
+
+    fileInput.addEventListener('change', function() {
+      if (fileInput.files && fileInput.files.length > 0) {
+        fileName.textContent = fileInput.files[0].name;
+      } else {
+        fileName.textContent = placeholderText;
+      }
+    });
+
+    customUi.appendChild(triggerBtn);
+    customUi.appendChild(fileName);
+  }
+
+  initCustomFileInput('id_doc_commercial_register', 'commercial-register-file-ui', '(إرفاق نسخة من السجل التجاري)');
+  initCustomFileInput('id_doc_municipal_license', 'municipal-license-file-ui', '(إرفاق نسخة من الترخيص البلدي)');
+  initCustomFileInput('id_doc_quality_certificates', 'quality-certificates-file-ui', '(إرفاق نسخ من شهادات الجودة)');
+  initCustomFileInput('id_doc_factory_layout', 'factory-layout-file-ui', '(إرفاق نسخة من مخططات المصنع)');
+</script>
+{% endblock %}

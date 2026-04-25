@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block breadcrumb %}<li class="breadcrumb-item active" aria-current="page">اختيار الخدمة</li>{% endblock %}
+{% block content %}
+
+<section class="home-hero mb-4">
+  <h1 class="mb-2">الخدمات الرئيسية</h1>
+  <p class="mb-0">اختر الخدمة المطلوبة للمتابعة.</p>
+</section>
+
+<div class="row g-3 g-md-4">
+  <div class="col-12 col-md-6 col-lg-4">
+    <a href="/login/?next=/dashboard/" class="module-card module-card-primary">
+      <span class="module-card-icon"><i class="fa-solid fa-clipboard-check"></i></span>
+      <h2>تقييم المنشآت الغذائية</h2>
+      <p>الدخول إلى نظام تقييم المنشآت الغذائية الحالي.</p>
+    </a>
+  </div>
+
+  <div class="col-12 col-md-6 col-lg-4">
+    <a href="/external-establishments-approval/" class="module-card module-card-secondary">
+      <span class="module-card-icon"><i class="fa-solid fa-certificate"></i></span>
+      <h2>إعتماد المنشآت الخارجية</h2>
+      <p>الوحدة متاحة كصفحة أولية وسيتم تطويرها بالكامل لاحقاً.</p>
+    </a>
+  </div>
+
+  <div class="col-12 col-md-6 col-lg-4">
+    <a href="/conformity-assessment-bodies-assignment/" class="module-card module-card-accent">
+      <span class="module-card-icon"><i class="fa-solid fa-people-arrows-left-right"></i></span>
+      <h2>تعيين جهات تقويم المطابقة</h2>
+      <p>الوحدة متاحة كصفحة أولية وسيتم تطويرها بالكامل لاحقاً.</p>
+    </a>
+  </div>
+</div>
+
+{% endblock %}

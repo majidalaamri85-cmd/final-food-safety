@@ -1,0 +1,296 @@
+{% extends 'base.html' %}
+{% load inspection_extras %}
+{% block content %}
+
+<!-- Hero Header -->
+<div class="dash-hero rounded-3 p-4 mb-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
+  <div>
+    <h2 class="fw-bold text-white mb-1"><i class="fa-solid fa-gauge-high me-2"></i>لوحة التحكم</h2>
+    <p class="mb-0" style="color: rgba(255,255,255,0.85);">متابعة أداء المنشآت الغذائية، التصنيفات، ونقاط عدم الاستيفاء.</p>
+  </div>
+</div>
+
+<form class="card mb-4 border-0 shadow-sm">
+  <div class="card-body">
+    <div class="row g-3 align-items-end">
+      <div class="col-md-3">
+        <label class="form-label"><i class="fa-solid fa-map me-1"></i>المحافظة</label>
+        <select name="governorate" id="governorateFilter" class="form-select">
+          <option value="">كل المحافظات</option>
+          {% for governorate in governorates %}
+            <option value="{{ governorate.id }}" {% if selected_governorate == governorate.id|stringformat:'s' %}selected{% endif %}>{{ governorate.name_ar }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label"><i class="fa-solid fa-location-dot me-1"></i>الولاية</label>
+        <select name="wilayat" id="wilayatFilter" class="form-select">
+          <option value="">كل الولايات</option>
+          {% for wilayat in wilayats %}
+            <option value="{{ wilayat.id }}" data-governorate="{{ wilayat.governorate_id }}" {% if selected_wilayat == wilayat.id|stringformat:'s' %}selected{% endif %}>{{ wilayat.name_ar }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label"><i class="fa-solid fa-star me-1"></i>التصنيف</label>
+        <select name="classification" class="form-select">
+          <option value="">كل التصنيفات</option>
+          {% for value, label in classification_choices %}
+            <option value="{{ value }}" {% if selected_classification == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label"><i class="fa-solid fa-check-double me-1"></i>حالة التقييم</label>
+        <select name="approval_status" class="form-select">
+          <option value="">كل الحالات</option>
+          {% for value, label in approval_status_choices %}
+            <option value="{{ value }}" {% if selected_approval_status == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2 d-flex gap-2">
+        <button class="btn btn-success flex-grow-1" type="submit"><i class="fa-solid fa-filter me-1"></i>تطبيق</button>
+        <a class="btn btn-outline-secondary" href="/dashboard/" title="إعادة تعيين"><i class="fa-solid fa-rotate-right"></i></a>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label"><i class="fa-regular fa-calendar me-1"></i>من تاريخ</label>
+        <input type="date" class="form-control" name="date_from" value="{{ date_from }}">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label"><i class="fa-regular fa-calendar-check me-1"></i>إلى تاريخ</label>
+        <input type="date" class="form-control" name="date_to" value="{{ date_to }}">
+      </div>
+    </div>
+  </div>
+</form>
+
+<!-- KPI Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-4 col-xl-2">
+    <div class="kpi-card kpi-blue h-100">
+      <div class="kpi-icon"><i class="fa-solid fa-building"></i></div>
+      <div class="kpi-value">{{ total_establishments|arabic_digits }}</div>
+      <div class="kpi-label">إجمالي المنشآت</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-4 col-xl-2">
+    <div class="kpi-card kpi-purple h-100">
+      <div class="kpi-icon"><i class="fa-solid fa-clipboard-list"></i></div>
+      <div class="kpi-value">{{ total_evaluations|arabic_digits }}</div>
+      <div class="kpi-label">إجمالي التقييمات</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-4 col-xl-2">
+    <div class="kpi-card kpi-green h-100">
+      <div class="kpi-icon"><i class="fa-solid fa-circle-check"></i></div>
+      <div class="kpi-value">{{ completed_evaluations|arabic_digits }}</div>
+      <div class="kpi-label">التقييمات المكتملة</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-4 col-xl-2">
+    <div class="kpi-card kpi-orange h-100">
+      <div class="kpi-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+      <div class="kpi-value">{{ open_actions|arabic_digits }}</div>
+      <div class="kpi-label">الإجراءات المفتوحة</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-4 col-xl-2">
+    <div class="kpi-card kpi-teal h-100">
+      <div class="kpi-icon"><i class="fa-solid fa-percent"></i></div>
+      <div class="kpi-value">{{ avg_percentage|arabic_digits }}%</div>
+      <div class="kpi-label">متوسط الالتزام</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-4 col-xl-2">
+    <div class="kpi-card kpi-red h-100">
+      <div class="kpi-icon"><i class="fa-solid fa-xmark-circle"></i></div>
+      <div class="kpi-value">{{ non_compliant_items|arabic_digits }}</div>
+      <div class="kpi-label">البنود غير المستوفية</div>
+    </div>
+  </div>
+</div>
+
+<!-- Row 2: Charts & Tables -->
+<div class="row g-4 mb-4">
+
+  <!-- Establishment Status Summary -->
+  <div class="col-12">
+    <div class="card shadow-sm border-0 rounded-3">
+      <div class="card-body p-4">
+        <h6 class="fw-bold mb-4 text-secondary"><i class="fa-solid fa-building-circle-check me-2 text-success"></i>حالة المنشآت بناءً على أحدث تقييم</h6>
+        <div class="row g-3">
+          {% for s in establishment_status_summary %}
+          <div class="col-6 col-md-3">
+            <div class="rounded-3 p-3 h-100 d-flex flex-column align-items-center text-center
+              {% if s.color == 'success' %}bg-success-subtle border border-success border-opacity-25
+              {% elif s.color == 'info' %}bg-info-subtle border border-info border-opacity-25
+              {% elif s.color == 'warning' %}bg-warning-subtle border border-warning border-opacity-25
+              {% else %}bg-danger-subtle border border-danger border-opacity-25{% endif %}">
+              <div class="fs-3 mb-1 text-{{ s.color }}"><i class="fa-solid {{ s.icon }}"></i></div>
+              <div class="display-6 fw-bold text-{{ s.color }}">{{ s.count|arabic_digits }}</div>
+              <div class="fw-bold mb-1">{{ s.label }}</div>
+              <div class="badge rounded-pill bg-{{ s.color }} mb-1">{{ s.range|arabic_digits }}</div>
+              <div class="small text-muted">{{ s.description }}</div>
+              <div class="mt-2 w-100">
+                <div class="progress" style="height:6px; border-radius:10px;">
+                  <div class="progress-bar bg-{{ s.color }}" style="width:{{ s.pct }}%; border-radius:10px;"></div>
+                </div>
+                <div class="small text-muted mt-1">{{ s.pct|arabic_digits }}% من المنشآت</div>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+          {% if no_eval_count %}
+          <div class="col-6 col-md-3">
+            <div class="rounded-3 p-3 h-100 d-flex flex-column align-items-center text-center bg-secondary-subtle border border-secondary border-opacity-25">
+              <div class="fs-3 mb-1 text-secondary"><i class="fa-solid fa-clock"></i></div>
+              <div class="display-6 fw-bold text-secondary">{{ no_eval_count|arabic_digits }}</div>
+              <div class="fw-bold mb-1">لم تُقيّم بعد</div>
+              <div class="badge rounded-pill bg-secondary mb-1">بدون تقييم</div>
+              <div class="small text-muted">لم يتم إجراء أي تقييم لهذه المنشآت</div>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Classification Distribution -->
+  <div class="col-lg-4">
+    <div class="card shadow-sm h-100 border-0 rounded-3">
+      <div class="card-body p-4">
+        <h6 class="fw-bold mb-3 text-secondary"><i class="fa-solid fa-chart-pie me-2 text-success"></i>التوزيع حسب التصنيف</h6>
+        {% for row in classification_summary %}
+          <div class="mb-3">
+            <div class="d-flex justify-content-between mb-1">
+              <span class="small fw-semibold">{{ row.label }}</span>
+              <span class="badge bg-success-subtle text-success rounded-pill">{{ row.total|arabic_digits }}</span>
+            </div>
+            <div class="progress" style="height: 8px; border-radius:10px;">
+              <div class="progress-bar" style="width:{{ row.pct }}%; background: linear-gradient(90deg,#34AD8A,#8ad7bf); border-radius:10px;"></div>
+            </div>
+          </div>
+        {% empty %}
+          <div class="text-muted text-center py-4"><i class="fa-regular fa-folder-open fa-2x mb-2 d-block text-muted"></i>لا توجد بيانات تصنيف حتى الآن.</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Establishments by Governorate -->
+  <div class="col-lg-4">
+    <div class="card shadow-sm h-100 border-0 rounded-3">
+      <div class="card-body p-4">
+        <h6 class="fw-bold mb-3 text-secondary"><i class="fa-solid fa-map-location-dot me-2 text-primary"></i>المنشآت حسب المحافظة</h6>
+        <table class="table table-hover table-sm mb-0">
+          <thead><tr><th class="text-muted small">المحافظة</th><th class="text-muted small text-center">المنشآت</th></tr></thead>
+          <tbody>
+            {% for row in by_governorate %}
+            <tr>
+              <td><i class="fa-solid fa-location-dot text-danger me-1 small"></i>{{ row.governorate__name_ar }}</td>
+              <td class="text-center"><span class="badge rounded-pill bg-primary-subtle text-primary">{{ row.total|arabic_digits }}</span></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="2" class="text-center text-muted py-3">لا توجد بيانات</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Weakest Results -->
+  <div class="col-lg-4">
+    <div class="card shadow-sm h-100 border-0 rounded-3">
+      <div class="card-body p-4">
+        <h6 class="fw-bold mb-3 text-secondary"><i class="fa-solid fa-arrow-trend-down me-2 text-danger"></i>أضعف نتائج حديثة</h6>
+        <table class="table table-hover table-sm mb-0">
+          <thead><tr><th class="text-muted small">المنشأة</th><th class="text-muted small text-center">النسبة</th><th class="text-muted small text-center">التصنيف</th></tr></thead>
+          <tbody>
+            {% for e in weakest_evaluations %}
+            <tr>
+              <td class="small">{{ e.establishment }}</td>
+              <td class="text-center">
+                <span class="badge rounded-pill {% if e.percentage < 50 %}bg-danger{% elif e.percentage < 75 %}bg-warning text-dark{% else %}bg-success{% endif %}">{{ e.percentage|arabic_digits }}%</span>
+              </td>
+              <td class="text-center small">{{ e.get_classification_display }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3" class="text-center text-muted py-3">لا توجد تقييمات</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Row 3: Recent Evaluations & Activity -->
+<div class="row g-4">
+  <!-- Recent Evaluations -->
+  <div class="col-lg-6">
+    <div class="card shadow-sm h-100 border-0 rounded-3">
+      <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h6 class="fw-bold text-secondary mb-0"><i class="fa-solid fa-clock-rotate-left me-2 text-warning"></i>آخر التقييمات</h6>
+          <a href="/evaluations/" class="btn btn-sm btn-outline-secondary rounded-pill">عرض الكل <i class="fa-solid fa-chevron-left ms-1"></i></a>
+        </div>
+        <table class="table table-hover table-sm mb-0 align-middle">
+          <thead><tr><th class="text-muted small">المنشأة</th><th class="text-muted small">التاريخ</th><th class="text-muted small text-center">النسبة</th><th class="text-muted small text-center">الحالة</th></tr></thead>
+          <tbody>
+            {% for e in recent_evaluations %}
+            <tr>
+              <td class="small fw-semibold">{{ e.establishment }}</td>
+              <td class="small text-muted">{{ e.visit_date|date:"Y/m/d"|arabic_digits }}</td>
+              <td class="text-center">
+                <span class="badge rounded-pill {% if e.percentage < 50 %}bg-danger{% elif e.percentage < 75 %}bg-warning text-dark{% else %}bg-success{% endif %}">{{ e.percentage|arabic_digits }}%</span>
+              </td>
+              <td class="text-center small">{{ e.get_approval_status_display }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="text-center text-muted py-3">لا توجد تقييمات</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Activity by Governorate -->
+  <div class="col-lg-6">
+    <div class="card shadow-sm h-100 border-0 rounded-3">
+      <div class="card-body p-4">
+        <h6 class="fw-bold mb-3 text-secondary"><i class="fa-solid fa-chart-bar me-2 text-info"></i>متابعة النشاط بالمحافظات</h6>
+        {% for row in establishment_growth %}
+          <div class="mb-3">
+            <div class="d-flex justify-content-between mb-1">
+              <span class="small fw-semibold">{{ row.governorate__name_ar }}</span>
+              <span class="small text-muted">{{ row.active_total|arabic_digits }} / {{ row.total|arabic_digits }} نشط</span>
+            </div>
+            <div class="progress" style="height: 8px; border-radius:10px;">
+              <div class="progress-bar" style="width:{{ row.active_pct }}%; background: linear-gradient(90deg,#17a2b8,#6edff6); border-radius:10px;"></div>
+            </div>
+          </div>
+        {% empty %}
+          <div class="text-muted text-center py-4"><i class="fa-regular fa-chart-bar fa-2x mb-2 d-block text-muted"></i>لا توجد بيانات كافية.</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function filterWilayats() {
+    const gov = document.getElementById('governorateFilter').value;
+    document.querySelectorAll('#wilayatFilter option[data-governorate]').forEach(function(o) {
+      o.hidden = gov && o.dataset.governorate !== gov;
+    });
+    const sel = document.getElementById('wilayatFilter');
+    if (sel.selectedOptions[0] && sel.selectedOptions[0].hidden) sel.value = '';
+  }
+  document.getElementById('governorateFilter').addEventListener('change', filterWilayats);
+  filterWilayats();
+</script>
+
+{% endblock %}

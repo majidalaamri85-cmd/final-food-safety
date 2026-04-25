@@ -1,0 +1,1113 @@
+import os
+import tempfile
+from collections import OrderedDict
+from io import BytesIO
+
+from django.conf import settings
+from django.contrib import messages
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.decorators import login_required
+from django.contrib.staticfiles import finders
+from django.core.cache import cache
+from django.core.paginator import Paginator
+from django.db.models import Avg, Count, OuterRef, Prefetch, Q, Subquery
+from django.forms import modelformset_factory
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.template.loader import get_template
+from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
+from openpyxl import Workbook
+from xhtml2pdf import files as pisa_files
+from xhtml2pdf import pisa
+
+from .forms import (
+    CorrectiveActionForm,
+    EstablishmentForm,
+    EvaluationForm,
+    EvaluationHeaderForm,
+    EvaluationItemForm,
+    EvaluationRecordCheckForm,
+    EvaluationTeamMemberForm,
+)
+from .models import (
+    CorrectiveActionLog,
+    Criterion,
+    Establishment,
+    Evaluation,
+    EvaluationActivityLog,
+    EvaluationImage,
+    EvaluationItem,
+    EvaluationRecordCheck,
+    EvaluationSection,
+    EvaluationTeamMember,
+    Governorate,
+    RequiredRecord,
+    UserProfile,
+    Wilayat,
+)
+
+PAGE_SIZE = 25
+
+REFERENCE_DATA_CACHE_KEY = 'inspection_reference_data_v1'
+REFERENCE_DATA_CACHE_TIMEOUT = 60 * 30
+DASHBOARD_CACHE_TIMEOUT = 60
+
+_ARABIC_TO_LATIN_DIGITS = str.maketrans('٠١٢٣٤٥٦٧٨٩', '0123456789')
+
+READY_CORRECTIVE_ACTIONS_BY_CODE = {'2.1': 'نقل النشاط أو إنشاء حواجز عازلة (أسوار/فلاتر/تشجير) مع تقييم بيئي دوري لمصادر التلوث.',
+ '2.2': 'إعادة تصميم مسار الإنتاج (Flow) وفصل مناطق الخام والمعالجة والمنتج النهائي بحواجز واضحة.',
+ '2.3': 'إصلاح الشقوق واستخدام أرضيات مانعة للانزلاق ومقاومة للمواد الكيميائية وسهلة التنظيف.',
+ '2.4': 'إعادة طلاء أو تغطية الجدران بمواد ملساء غير منفذة وقابلة للغسيل والتعقيم.',
+ '2.5': 'تنظيف وصيانة الأسقف ومنع التكثف وتركيب عوازل لمنع نمو الفطريات وتساقط الأوساخ.',
+ '2.6': 'تحسين الإضاءة وتركيب أغطية حماية للمصابيح (Shatterproof) لمنع تلوث المنتجات.',
+ '2.7': 'تركيب نظام تهوية فعال يضمن تدفق الهواء من المناطق النظيفة إلى الملوثة والتحكم بالرطوبة.',
+ '2.8': 'تركيب شبك معدني دقيق وصيانته بشكل دوري لمنع دخول الحشرات والقوارض.',
+ '2.9': 'استبدال أو صيانة الأبواب لتكون ملساء وتغلق تلقائياً وتمنع دخول الملوثات.',
+ '2.10': 'استخدام نوافذ مقاومة للصدأ مزودة بشبك حشري وتنظيفها بشكل دوري.',
+ '2.11': 'صيانة وتنظيف مستمر وضمان تصميم يمنع سقوط أو انتقال الملوثات للأغذية.',
+ '2.12': 'رصف الأرضيات وتحسين التصريف لمنع تجمع المياه والأتربة وتسهيل التنظيف.',
+ '3.1': 'توثيق مصدر المياه رسمياً (شهادة/ترخيص) واعتماد مصدر مطابق وإيقاف أي مصدر غير معتمد فوراً.',
+ '3.2': 'تنفيذ برنامج تحاليل دورية (ميكروبيولوجي وكيميائي) عبر مختبر معتمد وتوثيق النتائج واتخاذ إجراء فوري عند عدم المطابقة.',
+ '3.3': 'فصل شبكات الصرف بالكامل ومنع أي تداخل أو رجوع عكسي (Backflow) مع صيانة دورية للشبكات.',
+ '3.4': 'تعديل ميول الأرضيات نحو المصارف وتنظيفها وتركيب أغطية وسيفون لمنع الروائح ودخول الحشرات.',
+ '4.1': 'توفير غرف تغيير منفصلة مزودة بدواليب شخصية نظيفة مع برنامج تنظيف وصيانة دوري.',
+ '4.2': 'إنشاء/تعديل دورات المياه بحيث لا تفتح على الإنتاج مع تحسين التهوية والإضاءة والتنظيف المستمر.',
+ '4.3': 'تركيب مغاسل تعمل بالقدم/الحساس وتوفير صابون مطهر ومناشف أحادية الاستخدام بشكل دائم.',
+ '4.4': 'إلزام العمال بارتداء زي موحد نظيف + أغطية رأس + قفازات حسب نوع المنتج مع رقابة يومية.',
+ '4.5': 'تطبيق برنامج إلزامي لغسل اليدين مع لوحات إرشادية ومراقبة الالتزام.',
+ '4.6': 'منع ارتداء الحلي والساعات والأظافر الصناعية داخل الإنتاج مع التفتيش اليومي.',
+ '4.7': 'تطبيق نظام فحص صحي دوري ومنع العامل المصاب مؤقتاً حتى الشفاء.',
+ '4.8': 'حظر الأكل والشرب والتدخين داخل الإنتاج ووضع لوحات توعوية وتطبيق رقابة صارمة.',
+ '5.1': 'استبدال أو تغطية الأسطح بمواد Food Grade ملساء غير ماصة وغير سامة وسهلة التنظيف.',
+ '5.2': 'تعديل أو استبدال المعدات لضمان عدم تراكم بقايا الغذاء وسهولة التفكيك والتنظيف.',
+ '5.3': 'إعادة ترتيب وتثبيت المعدات مع توفير مسافات كافية تسمح بالتنظيف حولها وتحتها.',
+ '5.4': 'إعداد وتنفيذ برنامج صيانة وقائية موثق مع سجلات متابعة دورية.',
+ '5.5': 'توفير أجهزة قياس معتمدة ومعايرتها دورياً وتوثيق نتائج المعايرة.',
+ '6.1': 'التعاقد مع شركة مرخصة لمكافحة الآفات وتنفيذ برنامج دوري موثق.',
+ '6.2': 'إعداد وتحديث خريطة مواقع المصائد والطعوم مع ترقيمها ومراجعتها دورياً.',
+ '6.3': 'إنشاء وتحديث سجل متابعة الآفات واتخاذ إجراء فوري عند أي نشاط.',
+ '6.4': 'تخزين المبيدات في غرفة مغلقة منفصلة واستخدامها فقط بواسطة أشخاص مدربين.',
+ '7.1': 'إعداد برنامج تنظيف وتطهير شامل ومعتمد يغطي جميع المناطق والمعدات وتحديثه دورياً.',
+ '7.2': 'استخدام مواد تنظيف معتمدة Food Grade والتأكد من صلاحيتها وتخزينها بشكل آمن.',
+ '7.3': 'إنشاء وتحديث سجلات تنظيف يومية مع التحقق من التنفيذ والتوقيع.',
+ '7.4': 'تعيين مسؤول نظافة وتدريب الفريق وتحديد مهام واضحة ومتابعتها.',
+ '7.5': 'تطبيق أنظمة تنظيف آلي (CIP) أو يدوي فعال مع التحقق من كفاءة التطهير.',
+ '8.1': 'تشكيل فريق مؤهل متعدد التخصصات وتحديد مسؤوليات واضحة وتوثيق ذلك.',
+ '8.2': 'إعداد وتوثيق وصف شامل للمنتج يشمل المكونات والاستخدام والمستهلك المستهدف.',
+ '8.3': 'إعداد مخطط تدفق دقيق والتحقق منه ميدانياً وتحديثه عند أي تغيير.',
+ '8.4': 'إجراء تحليل مخاطر شامل (بيولوجي/كيميائي/فيزيائي) لكل مرحلة إنتاج.',
+ '8.5': 'استخدام شجرة القرار لتحديد نقاط التحكم الحرجة وتوثيقها.',
+ '8.6': 'تحديد حدود حرجة واضحة وقابلة للقياس لكل CCP.',
+ '8.7': 'تطبيق نظام مراقبة محدد (ماذا/كيف/متى/من) لكل CCP وتوثيقه.',
+ '8.8': 'تحديد إجراءات تصحيحية فورية عند تجاوز الحدود الحرجة ومنع تكرار الانحراف.',
+ '8.9': 'تنفيذ برنامج تحقق دوري (معايرة، فحوصات، تدقيق داخلي) لضمان فعالية النظام.',
+ '8.10': 'حفظ ومراجعة سجلات CCP بشكل منتظم من قبل مسؤول مؤهل.',
+ '9.1': 'تطبيق نظام تتبع شامل (Traceability) باستخدام أكواد تشغيل/تشغيلة يربط المواد الخام بالإنتاج والتوزيع.',
+ '9.2': 'إنشاء سجلات إنتاج يومية (تاريخ، خط، كود، كمية) ومراجعتها واعتمادها بشكل منتظم.',
+ '9.3': 'إعداد خطة استرجاع مكتوبة واختبارها عملياً مرة سنوياً وتوثيق النتائج وتحسينها.',
+ '10.1': 'إنشاء مختبر داخلي مجهز أو التعاقد مع مختبر معتمد وإثبات ذلك بشهادات رسمية.',
+ '10.2': 'تطبيق برنامج سحب عينات دوري من الإنتاج والمنتج النهائي وتحليلها وتوثيق النتائج.',
+ '10.3': 'فحص المواد الخام عالية الخطورة قبل الاستلام ورفض غير المطابق منها.',
+ '10.4': 'حفظ وتحليل النتائج واتخاذ إجراءات تصحيحية فورية عند عدم المطابقة.',
+ '11.1': 'إعداد وتنفيذ خطة تدريب سنوية معتمدة تغطي جميع العاملين وتحديثها دورياً.',
+ '11.2': 'تدريب العاملين حسب مهامهم على النظافة والتلوث المتبادل وHACCP مع تقييم كفاءتهم.',
+ '11.3': 'إنشاء وتحديث سجلات تدريب موثقة لكل موظف مع حفظها ومراجعتها.'}
+
+READY_CORRECTIVE_ACTIONS_BY_SECTION_PREFIX = {}
+
+
+def _normalize_digit_text(value):
+    if not value:
+        return ''
+    return str(value).translate(str.maketrans('٠١٢٣٤٥٦٧٨٩', '0123456789'))
+
+
+def _normalize_criterion_code(code):
+    return str(code or '').translate(_ARABIC_TO_LATIN_DIGITS).strip()
+
+
+def _get_ready_corrective_action_text(criterion_code):
+    normalized_code = _normalize_criterion_code(criterion_code)
+    direct = READY_CORRECTIVE_ACTIONS_BY_CODE.get(normalized_code)
+    if direct:
+        return direct
+    section_prefix = normalized_code.split('.', 1)[0]
+    return READY_CORRECTIVE_ACTIONS_BY_SECTION_PREFIX.get(section_prefix, '')
+
+
+def _get_profile(user):
+    """إرجاع UserProfile للمستخدم أو None إن لم يوجد."""
+    try:
+        return user.userprofile
+    except UserProfile.DoesNotExist:
+        return None
+
+
+def _get_reference_data():
+    reference_data = cache.get(REFERENCE_DATA_CACHE_KEY)
+    if reference_data is None:
+        reference_data = {
+            'governorates': list(
+                Governorate.objects.order_by('name_ar').values('id', 'name_ar')
+            ),
+            'wilayats': list(
+                Wilayat.objects.order_by('governorate__name_ar', 'name_ar').values(
+                    'id', 'name_ar', 'governorate_id'
+                )
+            ),
+        }
+        cache.set(REFERENCE_DATA_CACHE_KEY, reference_data, REFERENCE_DATA_CACHE_TIMEOUT)
+    return reference_data
+
+
+def _apply_rbac(qs_establishments, qs_evaluations, profile):
+    """
+    تطبيق قيود الوصول المبنية على الدور:
+    - admin / central / reviewer: يرون كل شيء
+    - manager: يرون محافظتهم فقط
+    - inspector: يرون كل المنشآت، لكن تقييماتهم فقط
+    """
+    if profile is None:
+        return qs_establishments, qs_evaluations
+
+    role = profile.role
+    if role == 'manager' and profile.governorate_id:
+        if qs_establishments is not None:
+            qs_establishments = qs_establishments.filter(governorate=profile.governorate)
+        if qs_evaluations is not None:
+            qs_evaluations = qs_evaluations.filter(establishment__governorate=profile.governorate)
+    elif role == 'inspector':
+        if qs_evaluations is not None:
+            qs_evaluations = qs_evaluations.filter(inspector=profile.user)
+
+    return qs_establishments, qs_evaluations
+
+
+def _build_default_corrective_action(item):
+    criterion_code = item.criterion.code
+    ready_text = _get_ready_corrective_action_text(criterion_code)
+    if ready_text:
+        return ready_text
+
+    criterion_text = (item.criterion.text_ar or '').strip()
+    risk_text = item.criterion.get_risk_level_display()
+    risk_level = item.criterion.risk_level
+
+    if risk_level == 'critical':
+        timeline = 'خلال 24 ساعة'
+        step_two = 'تنفيذ إجراء احتواء فوري وإيقاف الممارسة الخطرة حتى تصحيحها بالكامل.'
+        step_three = 'التحقق الموقعي من الفاعلية خلال 24-48 ساعة مع اعتماد المراجع الفني.'
+    elif risk_level == 'high':
+        timeline = 'خلال 3 أيام'
+        step_two = 'تنفيذ إجراء تصحيحي عاجل يمنع تكرار عدم الاستيفاء.'
+        step_three = 'التحقق من الفاعلية خلال 3-5 أيام وتوثيق نتائج المتابعة.'
+    elif risk_level == 'medium':
+        timeline = 'خلال 7 أيام'
+        step_two = 'تنفيذ الإجراء التصحيحي وفق خطة عمل محددة بالمسؤوليات.'
+        step_three = 'التحقق من الفاعلية خلال 7-10 أيام وتحديث السجلات.'
+    else:
+        timeline = 'خلال 14 يومًا'
+        step_two = 'تنفيذ تحسين تشغيلي ومعالجة سبب عدم الاستيفاء.'
+        step_three = 'التحقق الدوري من الفاعلية وتوثيق الإغلاق النهائي.'
+
+    return (
+        f'1) معالجة عدم الاستيفاء في البند {criterion_code} ({criterion_text}) وإزالة السبب الجذري.\n'
+        f'2) {step_two}\n'
+        f'3) {step_three}\n'
+        f'4) تاريخ الإغلاق المستهدف: {timeline}.\n'
+        f'مستوى الخطورة: {risk_text}.'
+    )
+
+
+def _sync_corrective_actions_for_evaluation(evaluation, user):
+    items = list(
+        EvaluationItem.objects.filter(evaluation=evaluation)
+        .select_related('criterion')
+    )
+    existing_logs = {
+        log.criterion_id: log
+        for log in CorrectiveActionLog.objects.filter(evaluation=evaluation, criterion__isnull=False)
+    }
+
+    active_criterion_ids = set()
+    for item in items:
+        has_corrective_action = bool((item.corrective_action or '').strip())
+        if item.status != 'non_compliant' or not has_corrective_action:
+            continue
+
+        active_criterion_ids.add(item.criterion_id)
+        title = f'إجراء تصحيحي للبند {item.criterion.code}'
+        details = item.corrective_action.strip()
+        log = existing_logs.get(item.criterion_id)
+
+        if log is None:
+            CorrectiveActionLog.objects.create(
+                evaluation=evaluation,
+                criterion=item.criterion,
+                created_by=user,
+                title=title,
+                details=details,
+                assigned_to='يحدد لاحقاً',
+                status='open',
+            )
+            continue
+
+        updated_fields = []
+        if log.title != title:
+            log.title = title
+            updated_fields.append('title')
+        if log.details != details:
+            log.details = details
+            updated_fields.append('details')
+        if not log.assigned_to:
+            log.assigned_to = 'يحدد لاحقاً'
+            updated_fields.append('assigned_to')
+        if updated_fields:
+            log.save(update_fields=updated_fields)
+
+    stale_logs = [
+        log.pk for criterion_id, log in existing_logs.items()
+        if criterion_id not in active_criterion_ids and log.status == 'open'
+    ]
+    if stale_logs:
+        CorrectiveActionLog.objects.filter(pk__in=stale_logs).delete()
+
+
+ISIC4_FOOD_ACTIVITIES = [
+    ('1010', 'تجهيز وحفظ اللحوم'),
+    ('1020', 'تجهيز وحفظ الأسماك والقشريات والرخويات'),
+    ('1030', 'تجهيز وحفظ الفواكه والخضروات'),
+    ('1040', 'صناعة الزيوت والدهون النباتية والحيوانية'),
+    ('1050', 'صناعة منتجات الألبان'),
+    ('1061', 'صناعة منتجات مطاحن الحبوب'),
+    ('1062', 'صناعة النشا ومنتجاته'),
+    ('1071', 'صناعة منتجات المخابز'),
+    ('1072', 'صناعة السكر'),
+    ('1073', 'صناعة الكاكاو والشوكولاتة والحلويات السكرية'),
+    ('1074', 'صناعة المعكرونة والشعيرية والكسكس ومنتجات النشا المماثلة'),
+    ('1075', 'صناعة الوجبات والأطباق الجاهزة'),
+    ('1079', 'صناعة منتجات غذائية أخرى غير مصنفة في موضع آخر'),
+    ('1080', 'صناعة الأعلاف الحيوانية المحضرة'),
+    ('1101', 'تقطير ومزج المشروبات الروحية'),
+    ('1102', 'صناعة النبيذ'),
+    ('1103', 'صناعة مشروبات الشعير والملت'),
+    ('1104', 'صناعة المشروبات الغازية وإنتاج المياه المعدنية والمياه المعبأة الأخرى'),
+]
+
+
+def home(request):
+    return render(request, 'inspections/home.html', {'minimal_nav': True})
+
+
+def user_login(request):
+    if request.user.is_authenticated:
+        return redirect('dashboard')
+
+    next_url = (request.GET.get('next') or request.POST.get('next') or '').strip()
+
+    if request.method == 'POST':
+        username = request.POST.get('username', '').strip()
+        password = request.POST.get('password', '')
+
+        user = authenticate(request, username=username, password=password)
+        if user is not None:
+            login(request, user)
+            if next_url and url_has_allowed_host_and_scheme(
+                url=next_url,
+                allowed_hosts={request.get_host()},
+                require_https=request.is_secure(),
+            ):
+                return redirect(next_url)
+            return redirect('dashboard')
+
+        messages.error(request, 'اسم المستخدم أو كلمة السر غير صحيحة.')
+
+    context = {
+        'minimal_nav': True,
+        'next': next_url,
+    }
+    return render(request, 'inspections/login.html', context)
+
+
+@login_required
+def user_logout(request):
+    logout(request)
+    return redirect('home')
+
+
+def external_establishments_approval(request):
+    context = {
+        'module_title': 'اعتماد المنشآت الخارجية',
+        'module_description': 'هذه الوحدة ستكون متاحة قريباً.',
+        'minimal_nav': True,
+    }
+    return render(request, 'inspections/module_placeholder.html', context)
+
+
+def conformity_assessment_bodies_assignment(request):
+    context = {
+        'module_title': 'تعيين جهات تقويم المطابقة',
+        'module_description': 'هذه الوحدة ستكون متاحة قريباً.',
+        'minimal_nav': True,
+    }
+    return render(request, 'inspections/module_placeholder.html', context)
+
+
+@login_required
+def dashboard(request):
+    profile = _get_profile(request.user)
+
+    governorate_id = request.GET.get('governorate', '').strip()
+    wilayat_id = request.GET.get('wilayat', '').strip()
+    classification = request.GET.get('classification', '').strip()
+    approval_status = request.GET.get('approval_status', '').strip()
+    date_from = request.GET.get('date_from', '').strip()
+    date_to = request.GET.get('date_to', '').strip()
+
+    establishments_qs = Establishment.objects.all()
+    evaluations_qs = Evaluation.objects.select_related('establishment')
+    establishments_qs, evaluations_qs = _apply_rbac(establishments_qs, evaluations_qs, profile)
+
+    if governorate_id:
+        establishments_qs = establishments_qs.filter(governorate_id=governorate_id)
+        evaluations_qs = evaluations_qs.filter(establishment__governorate_id=governorate_id)
+    if wilayat_id:
+        establishments_qs = establishments_qs.filter(wilayat_id=wilayat_id)
+        evaluations_qs = evaluations_qs.filter(establishment__wilayat_id=wilayat_id)
+    if classification:
+        evaluations_qs = evaluations_qs.filter(classification=classification)
+    if approval_status:
+        evaluations_qs = evaluations_qs.filter(approval_status=approval_status)
+    if date_from:
+        evaluations_qs = evaluations_qs.filter(visit_date__gte=date_from)
+    if date_to:
+        evaluations_qs = evaluations_qs.filter(visit_date__lte=date_to)
+
+    total_establishments = establishments_qs.count()
+    total_evaluations = evaluations_qs.count()
+    completed_evaluations = evaluations_qs.filter(approval_status='completed').count()
+    open_actions = CorrectiveActionLog.objects.exclude(status='closed').filter(evaluation__in=evaluations_qs).count()
+    non_compliant_items = EvaluationItem.objects.filter(status='non_compliant', evaluation__in=evaluations_qs).count()
+    avg_percentage = evaluations_qs.aggregate(avg=Avg('percentage'))['avg'] or 0
+
+    by_governorate = list(
+        establishments_qs.values('governorate__name_ar')
+        .annotate(total=Count('id'))
+        .order_by('governorate__name_ar')
+    )
+    recent_evaluations = list(
+        evaluations_qs.only(
+            'id',
+            'visit_date',
+            'percentage',
+            'approval_status',
+            'establishment__commercial_name',
+        )
+        .order_by('-visit_date', '-created_at')[:10]
+    )
+    classification_summary = list(
+        evaluations_qs.values('classification').annotate(total=Count('id')).order_by('-total')
+    )
+    weakest_evaluations = list(
+        evaluations_qs.only(
+            'id',
+            'visit_date',
+            'percentage',
+            'classification',
+            'establishment__commercial_name',
+        )
+        .order_by('percentage', '-visit_date', '-created_at')[:5]
+    )
+    establishment_growth = list(
+        establishments_qs.values('governorate__name_ar')
+        .annotate(
+            active_total=Count('id', filter=Q(status='active')),
+            total=Count('id'),
+        )
+        .order_by('-total')[:6]
+    )
+
+    classification_labels = dict(Evaluation.CLASSIFICATION_CHOICES)
+    for row in classification_summary:
+        row['label'] = classification_labels.get(row['classification'], row['classification'])
+        row['pct'] = round((row['total'] / total_evaluations) * 100, 1) if total_evaluations else 0
+
+    for row in establishment_growth:
+        row['active_pct'] = round((row['active_total'] / row['total']) * 100, 1) if row['total'] else 0
+
+    STATUS_META = {
+        'excellent': {'label': 'ممتاز', 'range': '86%-100%', 'description': 'مستوفي للحصول على شهادة ضبط الجودة', 'color': 'success', 'icon': 'fa-star', 'order': 1},
+        'good': {'label': 'جيد', 'range': '70%-85%', 'description': 'مستوفي مع وجود فرص للتحسين', 'color': 'info', 'icon': 'fa-thumbs-up', 'order': 2},
+        'acceptable': {'label': 'مقبول', 'range': '41%-69%', 'description': 'يحتاج تأهيل ومزيد من التحسين', 'color': 'warning', 'icon': 'fa-triangle-exclamation', 'order': 3},
+        'weak': {'label': 'ضعيف', 'range': '0%-40%', 'description': 'إيقاف الإنتاج', 'color': 'danger', 'icon': 'fa-circle-xmark', 'order': 4},
+    }
+
+    latest_eval_subq = evaluations_qs.filter(
+        establishment=OuterRef('pk')
+    ).order_by('-visit_date', '-created_at')
+    establishments_with_latest = establishments_qs.annotate(
+        latest_cls=Subquery(latest_eval_subq.values('classification')[:1])
+    )
+    counted = {
+        row['latest_cls']: row['total']
+        for row in establishments_with_latest.values('latest_cls').annotate(total=Count('id')).order_by()
+        if row['latest_cls']
+    }
+    no_eval_count = establishments_with_latest.filter(latest_cls__isnull=True).count()
+    establishment_status_summary = []
+    for key, meta in sorted(STATUS_META.items(), key=lambda x: x[1]['order']):
+        count = counted.get(key, 0)
+        establishment_status_summary.append({
+            **meta,
+            'key': key,
+            'count': count,
+            'pct': round((count / total_establishments) * 100, 1) if total_establishments else 0,
+        })
+
+    reference_data = _get_reference_data()
+
+    context = {
+        'total_establishments': total_establishments,
+        'total_evaluations': total_evaluations,
+        'completed_evaluations': completed_evaluations,
+        'open_actions': open_actions,
+        'non_compliant_items': non_compliant_items,
+        'by_governorate': by_governorate,
+        'recent_evaluations': recent_evaluations,
+        'avg_percentage': round(avg_percentage, 2),
+        'classification_summary': classification_summary,
+        'weakest_evaluations': weakest_evaluations,
+        'establishment_growth': establishment_growth,
+        'establishment_status_summary': establishment_status_summary,
+        'no_eval_count': no_eval_count,
+        'governorates': reference_data['governorates'],
+        'wilayats': reference_data['wilayats'],
+        'selected_governorate': governorate_id,
+        'selected_wilayat': wilayat_id,
+        'selected_classification': classification,
+        'selected_approval_status': approval_status,
+        'date_from': date_from,
+        'date_to': date_to,
+        'classification_choices': Evaluation.CLASSIFICATION_CHOICES,
+        'approval_status_choices': Evaluation.APPROVAL_STATUS_CHOICES,
+    }
+
+    return render(request, 'inspections/dashboard.html', context)
+
+
+@login_required
+def establishment_list(request):
+    profile = _get_profile(request.user)
+    qs = (
+        Establishment.objects.select_related('governorate', 'wilayat')
+        .only(
+            'id',
+            'establishment_no',
+            'commercial_name',
+            'activity_type',
+            'license_no',
+            'direct_location_url',
+            'status',
+            'governorate__name_ar',
+            'wilayat__name_ar',
+        )
+        .order_by('commercial_name', 'id')
+    )
+    qs, _ = _apply_rbac(qs, None, profile)
+
+    q = request.GET.get('q', '').strip()
+    normalized_q = _normalize_digit_text(q)
+    governorate_id = request.GET.get('governorate', '').strip()
+    wilayat_id = request.GET.get('wilayat', '').strip()
+    if q:
+        filters = (
+            Q(commercial_name__icontains=q) |
+            Q(activity_type__icontains=q) |
+            Q(license_no__icontains=q) |
+            Q(commercial_reg__icontains=q)
+        )
+        if normalized_q.isdigit():
+            filters |= Q(establishment_no=int(normalized_q))
+        qs = qs.filter(filters)
+    if governorate_id:
+        qs = qs.filter(governorate_id=governorate_id)
+    if wilayat_id:
+        qs = qs.filter(wilayat_id=wilayat_id)
+    reference_data = _get_reference_data()
+
+    paginator = Paginator(qs, PAGE_SIZE)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    return render(request, 'inspections/establishment_list.html', {
+        'establishments': page_obj,
+        'page_obj': page_obj,
+        'q': q,
+        'governorates': reference_data['governorates'],
+        'wilayats': reference_data['wilayats'],
+        'selected_governorate': governorate_id,
+        'selected_wilayat': wilayat_id,
+    })
+
+
+@login_required
+def establishment_create(request):
+    form = EstablishmentForm(request.POST or None, request.FILES or None)
+    if form.is_valid():
+        obj = form.save()
+        messages.success(request, f'تم حفظ المنشأة بنجاح. رقم المنشأة: {obj.establishment_no} | الرقم المرجعي: {obj.reference_no}')
+        return redirect('establishment_list')
+    wilayats = list(
+        Wilayat.objects.select_related('governorate')
+        .order_by('governorate__name_ar', 'name_ar')
+        .values('id', 'name_ar', 'governorate_id')
+    )
+    return render(request, 'inspections/establishment_form.html', {
+        'form': form,
+        'title': 'إضافة منشأة',
+        'wilayats': wilayats,
+        'isic_activities': ISIC4_FOOD_ACTIVITIES,
+    })
+
+
+@login_required
+def evaluation_list(request):
+    profile = _get_profile(request.user)
+    qs = (
+        Evaluation.objects.select_related(
+            'establishment',
+            'establishment__governorate',
+            'establishment__wilayat',
+        )
+        .only(
+            'id',
+            'visit_date',
+            'classification',
+            'approval_status',
+            'establishment__commercial_name',
+            'establishment__license_no',
+            'establishment__establishment_no',
+            'establishment__commercial_reg',
+            'establishment__governorate__name_ar',
+            'establishment__wilayat__name_ar',
+        )
+        .order_by('-visit_date', '-created_at')
+    )
+    _, qs = _apply_rbac(None, qs, profile)
+
+    governorate_id = request.GET.get('governorate', '').strip()
+    wilayat_id = request.GET.get('wilayat', '').strip()
+    classification = request.GET.get('classification', '').strip()
+    q = request.GET.get('q', '').strip()
+    normalized_q = _normalize_digit_text(q)
+
+    if governorate_id:
+        qs = qs.filter(establishment__governorate_id=governorate_id)
+    if wilayat_id:
+        qs = qs.filter(establishment__wilayat_id=wilayat_id)
+    if classification:
+        qs = qs.filter(classification=classification)
+    if q:
+        filters = (
+            Q(establishment__commercial_name__icontains=q) |
+            Q(establishment__license_no__icontains=q) |
+            Q(establishment__commercial_reg__icontains=q)
+        )
+        if normalized_q.isdigit():
+            filters |= Q(establishment__establishment_no=int(normalized_q))
+        qs = qs.filter(filters)
+
+    reference_data = _get_reference_data()
+    classification_choices = Evaluation.CLASSIFICATION_CHOICES
+
+    paginator = Paginator(qs, PAGE_SIZE)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    return render(request, 'inspections/evaluation_list.html', {
+        'evaluations': page_obj,
+        'page_obj': page_obj,
+        'governorates': [
+            {'governorate__id': governorate['id'], 'governorate__name_ar': governorate['name_ar']}
+            for governorate in reference_data['governorates']
+        ],
+        'wilayats': [
+            {
+                'wilayat__id': wilayat['id'],
+                'wilayat__name_ar': wilayat['name_ar'],
+                'governorate__id': wilayat['governorate_id'],
+            }
+            for wilayat in reference_data['wilayats']
+        ],
+        'classification_choices': classification_choices,
+        'selected_governorate': governorate_id,
+        'selected_wilayat': wilayat_id,
+        'selected_classification': classification,
+        'q': q,
+    })
+
+
+def create_evaluation_items(evaluation):
+    criteria = Criterion.objects.filter(is_active=True).select_related('section').order_by('section__sort_order', 'code')
+    for criterion in criteria:
+        EvaluationItem.objects.get_or_create(
+            evaluation=evaluation,
+            criterion=criterion,
+            defaults={'status': 'compliant'}
+        )
+
+    records = RequiredRecord.objects.filter(is_active=True).order_by('name_ar')
+    for record in records:
+        EvaluationRecordCheck.objects.get_or_create(
+            evaluation=evaluation,
+            record=record,
+        )
+
+
+@login_required
+def evaluation_create(request):
+    profile = _get_profile(request.user)
+    establishments_qs = Establishment.objects.all()
+    establishments_qs, _ = _apply_rbac(establishments_qs, None, profile)
+    default_establishment = establishments_qs.order_by('commercial_name', 'id').first()
+
+    if not default_establishment:
+        messages.error(request, 'لا توجد منشآت متاحة لإنشاء تقييم. يرجى إضافة منشأة أولاً.')
+        return redirect('establishment_create')
+
+    obj = Evaluation.objects.create(
+        establishment=default_establishment,
+        inspector=request.user,
+        visit_date=timezone.localdate(),
+    )
+    create_evaluation_items(obj)
+    EvaluationActivityLog.objects.create(
+        evaluation=obj,
+        user=request.user,
+        action='إنشاء تقييم',
+        notes='تم إنشاء مسودة تقييم وفتح صفحة البنود مباشرة.',
+    )
+    messages.success(request, 'تم فتح تقييم جديد. يمكنك الآن اختيار المنشأة والتاريخ وإكمال البنود في نفس الصفحة.')
+    return redirect('evaluation_update', pk=obj.pk)
+
+
+@login_required
+def evaluation_update(request, pk):
+    profile = _get_profile(request.user)
+    evaluation = get_object_or_404(Evaluation.objects.select_related('establishment', 'inspector'), pk=pk)
+
+    # المفتش لا يستطيع تعديل تقييمات الآخرين
+    if profile and profile.role == 'inspector' and evaluation.inspector != request.user:
+        messages.error(request, 'ليس لديك صلاحية لتعديل هذا التقييم.')
+        return redirect('evaluation_list')
+
+    queryset = EvaluationItem.objects.filter(
+        evaluation=evaluation
+    ).select_related(
+        'criterion', 'criterion__section'
+    ).order_by(
+        'criterion__section__sort_order', 'criterion__sort_order', 'id'
+    )
+
+    EvaluationItemFormSet = modelformset_factory(
+        EvaluationItem,
+        form=EvaluationItemForm,
+        extra=0,
+        can_delete=False,
+    )
+    EvaluationRecordFormSet = modelformset_factory(
+        EvaluationRecordCheck,
+        form=EvaluationRecordCheckForm,
+        extra=0,
+        can_delete=False,
+    )
+    EvaluationTeamMemberFormSet = modelformset_factory(
+        EvaluationTeamMember,
+        form=EvaluationTeamMemberForm,
+        extra=1,
+        can_delete=True,
+    )
+    record_queryset = EvaluationRecordCheck.objects.filter(
+        evaluation=evaluation
+    ).select_related('record').order_by('record__name_ar', 'id')
+    team_queryset = EvaluationTeamMember.objects.filter(
+        evaluation=evaluation
+    ).order_by('sort_order', 'id')
+    meta_form = EvaluationHeaderForm(request.POST or None, instance=evaluation, prefix='meta')
+
+    if request.method == 'POST':
+        formset = EvaluationItemFormSet(request.POST, queryset=queryset)
+        record_formset = EvaluationRecordFormSet(request.POST, queryset=record_queryset, prefix='records')
+        team_formset = EvaluationTeamMemberFormSet(request.POST, queryset=team_queryset, prefix='team')
+        if meta_form.is_valid() and formset.is_valid() and record_formset.is_valid() and team_formset.is_valid():
+            meta_form.save()
+            items = formset.save()
+            record_formset.save()
+            team_members = team_formset.save(commit=False)
+            for deleted_member in team_formset.deleted_objects:
+                deleted_member.delete()
+            for index, member in enumerate(team_members, start=1):
+                member.evaluation = evaluation
+                member.sort_order = index
+                member.save()
+            for item in items:
+                if item.status == 'non_compliant' and not (item.corrective_action or '').strip():
+                    item.corrective_action = _build_default_corrective_action(item)
+                    item.save(update_fields=['corrective_action'])
+                image_field = request.FILES.get(f'image_{item.id}')
+                caption = request.POST.get(f'caption_{item.id}', '').strip()
+                if image_field:
+                    EvaluationImage.objects.create(
+                        evaluation=evaluation,
+                        criterion=item.criterion,
+                        image=image_field,
+                        caption=caption,
+                    )
+            _sync_corrective_actions_for_evaluation(evaluation, request.user)
+            evaluation.calculate_results()
+            evaluation.save(update_fields=['total_points', 'percentage', 'classification'])
+            EvaluationActivityLog.objects.create(evaluation=evaluation, user=request.user, action='حفظ التقييم', notes='تم حفظ بنود التقييم.')
+            messages.success(request, f'تم حفظ التقييم بنجاح. النسبة: {evaluation.percentage}% - التصنيف: {evaluation.get_classification_display()}')
+            return redirect('evaluation_update', pk=evaluation.pk)
+    else:
+        formset = EvaluationItemFormSet(queryset=queryset)
+        record_formset = EvaluationRecordFormSet(queryset=record_queryset, prefix='records')
+        team_formset = EvaluationTeamMemberFormSet(queryset=team_queryset, prefix='team')
+
+    grouped_forms = OrderedDict()
+    non_compliant_count = queryset.filter(status='non_compliant').count()
+    compliant_count = queryset.filter(status='compliant').count()
+    has_evaluation_result = EvaluationActivityLog.objects.filter(
+        evaluation=evaluation,
+        action__in=['حفظ التقييم', 'إنهاء التقييم'],
+    ).exists()
+    high_risk_non_compliant = list(
+        queryset.filter(
+            status='non_compliant',
+            criterion__risk_level__in=['high', 'critical'],
+        ).values_list('criterion__code', flat=True)
+    )
+
+    image_map = {}
+    for image in EvaluationImage.objects.filter(evaluation=evaluation).select_related('criterion').order_by('id'):
+        image_map.setdefault(image.criterion_id, []).append(image)
+
+    for form in formset.forms:
+        section = form.instance.criterion.section
+        grouped_forms.setdefault(section, [])
+        grouped_forms[section].append(form)
+
+    signature_rows = [
+        {
+            'name': getattr(evaluation.inspector, 'get_full_name', lambda: '')() or evaluation.inspector.username,
+            'job_title': 'المفتش / المقيم',
+        }
+    ]
+    signature_rows.extend(
+        {
+            'name': member.full_name,
+            'job_title': member.job_title,
+        }
+        for member in evaluation.team_members.all()
+    )
+    if evaluation.reviewer:
+        signature_rows.append({
+            'name': getattr(evaluation.reviewer, 'get_full_name', lambda: '')() or evaluation.reviewer.username,
+            'job_title': 'المراجع الفني',
+        })
+    while len(signature_rows) < 4:
+        signature_rows.append({'name': '', 'job_title': ''})
+
+    signature_rows = [
+        {
+            'name': getattr(evaluation.inspector, 'get_full_name', lambda: '')() or evaluation.inspector.username,
+            'job_title': 'المفتش / المقيم',
+        }
+    ]
+    signature_rows.extend(
+        {
+            'name': member.full_name,
+            'job_title': member.job_title,
+        }
+        for member in evaluation.team_members.all()
+    )
+    if evaluation.reviewer:
+        signature_rows.append({
+            'name': getattr(evaluation.reviewer, 'get_full_name', lambda: '')() or evaluation.reviewer.username,
+            'job_title': 'المراجع الفني',
+        })
+    while len(signature_rows) < 4:
+        signature_rows.append({'name': '', 'job_title': ''})
+
+    signature_rows = [
+        {
+            'name': getattr(evaluation.inspector, 'get_full_name', lambda: '')() or evaluation.inspector.username,
+            'job_title': 'المفتش / المقيم',
+        }
+    ]
+    signature_rows.extend(
+        {
+            'name': member.full_name,
+            'job_title': member.job_title,
+        }
+        for member in evaluation.team_members.all()
+    )
+    if evaluation.reviewer:
+        signature_rows.append({
+            'name': getattr(evaluation.reviewer, 'get_full_name', lambda: '')() or evaluation.reviewer.username,
+            'job_title': 'المراجع الفني',
+        })
+    while len(signature_rows) < 4:
+        signature_rows.append({'name': '', 'job_title': ''})
+
+    context = {
+        'evaluation': evaluation,
+        'meta_form': meta_form,
+        'formset': formset,
+        'record_formset': record_formset,
+        'team_formset': team_formset,
+        'grouped_forms': grouped_forms,
+        'non_compliant_count': non_compliant_count,
+        'compliant_count': compliant_count,
+        'has_evaluation_result': has_evaluation_result,
+        'high_risk_non_compliant': high_risk_non_compliant,
+        'image_map': image_map,
+    }
+    return render(request, 'inspections/evaluation_update.html', context)
+
+
+@login_required
+def evaluation_submit(request, pk):
+    profile = _get_profile(request.user)
+    evaluation = get_object_or_404(Evaluation, pk=pk)
+
+    # المفتش لا يستطيع إنهاء تقييمات الآخرين
+    if profile and profile.role == 'inspector' and evaluation.inspector != request.user:
+        messages.error(request, 'ليس لديك صلاحية لإنهاء هذا التقييم.')
+        return redirect('evaluation_list')
+
+    evaluation.mark_completed()
+    EvaluationActivityLog.objects.create(evaluation=evaluation, user=request.user, action='إنهاء التقييم')
+    messages.success(request, 'تم إنهاء التقييم وحفظه كحالة مكتملة.')
+    return redirect('evaluation_list')
+
+
+@login_required
+def corrective_action_list(request):
+    qs = CorrectiveActionLog.objects.select_related('evaluation', 'criterion').all()
+    return render(request, 'inspections/corrective_list.html', {'actions': qs})
+
+
+@login_required
+def corrective_action_create(request):
+    form = CorrectiveActionForm(request.POST or None)
+    if form.is_valid():
+        obj = form.save(commit=False)
+        obj.created_by = request.user
+        obj.save()
+        messages.success(request, 'تم حفظ الإجراء التصحيحي.')
+        return redirect('corrective_action_list')
+    return render(request, 'inspections/form.html', {'form': form, 'title': 'إضافة إجراء تصحيحي'})
+
+
+@login_required
+def corrective_action_update(request, pk):
+    corrective_action = get_object_or_404(CorrectiveActionLog, pk=pk)
+    form = CorrectiveActionForm(request.POST or None, instance=corrective_action)
+    if form.is_valid():
+        form.save()
+        messages.success(request, 'تم تحديث الإجراء التصحيحي.')
+        return redirect('corrective_action_list')
+    return render(request, 'inspections/form.html', {'form': form, 'title': 'تعديل إجراء تصحيحي'})
+
+
+@login_required
+def export_establishments_excel(request):
+    wb = Workbook()
+    ws = wb.active
+    ws.title = 'المنشآت'
+    ws.append(['الرقم المرجعي', 'رقم المنشأة', 'الاسم التجاري', 'النشاط', 'المحافظة', 'الولاية', 'رقم الترخيص', 'السجل التجاري', 'الحالة'])
+    for e in Establishment.objects.select_related('governorate', 'wilayat').all():
+        ws.append([
+            e.reference_no,
+            e.establishment_no,
+            e.commercial_name, e.activity_type, e.governorate.name_ar, e.wilayat.name_ar,
+            e.license_no, e.commercial_reg, e.get_status_display()
+        ])
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="establishments.xlsx"'
+    wb.save(response)
+    return response
+
+
+@login_required
+def export_evaluations_excel(request):
+    qs = Evaluation.objects.select_related(
+        'establishment', 'establishment__governorate', 'establishment__wilayat', 'inspector'
+    ).prefetch_related(
+        Prefetch('items', queryset=EvaluationItem.objects.filter(status='non_compliant').select_related('criterion')),
+        Prefetch('record_checks', queryset=EvaluationRecordCheck.objects.filter(is_available=False).select_related('record')),
+    ).all()
+    governorate_id = request.GET.get('governorate', '').strip()
+    wilayat_id = request.GET.get('wilayat', '').strip()
+    classification = request.GET.get('classification', '').strip()
+    q = request.GET.get('q', '').strip()
+
+    if governorate_id:
+        qs = qs.filter(establishment__governorate_id=governorate_id)
+    if wilayat_id:
+        qs = qs.filter(establishment__wilayat_id=wilayat_id)
+    if classification:
+        qs = qs.filter(classification=classification)
+    if q:
+        qs = qs.filter(
+            Q(establishment__commercial_name__icontains=q) |
+            Q(establishment__license_no__icontains=q) |
+            Q(establishment__commercial_reg__icontains=q)
+        )
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = 'تقارير التقييم'
+    ws.append([
+        'مرجع التقرير', 'مرجع المنشأة', 'اسم المنشأة', 'المحافظة', 'الولاية', 'رقم الترخيص', 'تاريخ الزيارة',
+        'المفتش', 'النسبة', 'التصنيف', 'الحالة', 'البنود غير المستوفية',
+    ])
+
+    for evaluation in qs:
+        non_compliant = evaluation.items.all()
+        missing_records = evaluation.record_checks.all()
+        non_compliant_text = ' | '.join(
+            f'{item.criterion.code}. {item.criterion.text_ar}' + (f' - {item.remarks}' if item.remarks else '')
+            for item in non_compliant
+        )
+        missing_records_text = ' | '.join(record_check.record.name_ar for record_check in missing_records)
+        issues_text = ' | '.join(filter(None, [non_compliant_text, missing_records_text])) or 'لا توجد بنود غير مستوفية'
+        ws.append([
+            evaluation.report_reference_no,
+            evaluation.establishment.reference_no,
+            evaluation.establishment.commercial_name,
+            evaluation.establishment.governorate.name_ar,
+            evaluation.establishment.wilayat.name_ar,
+            evaluation.establishment.license_no,
+            str(evaluation.visit_date),
+            evaluation.inspector.get_full_name() or evaluation.inspector.username,
+            float(evaluation.percentage),
+            evaluation.get_classification_display(),
+            evaluation.get_approval_status_display(),
+            issues_text,
+        ])
+
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="evaluation_reports.xlsx"'
+    wb.save(response)
+    return response
+
+
+def link_callback(uri, rel):
+    if uri.startswith(settings.MEDIA_URL):
+        path = os.path.join(settings.MEDIA_ROOT, uri.replace(settings.MEDIA_URL, ''))
+    elif uri.startswith(settings.STATIC_URL):
+        path = finders.find(uri.replace(settings.STATIC_URL, ''))
+    else:
+        return uri
+
+    if not path or not os.path.isfile(path):
+        raise Exception(f'تعذر العثور على الملف: {uri}')
+    return path
+
+
+
+def render_to_pdf(template_src, context_dict):
+    template = get_template(template_src)
+    html = template.render(context_dict)
+    result = BytesIO()
+    original_named_temp_file = pisa_files.tempfile.NamedTemporaryFile
+
+    def reopenable_named_temp_file(*args, **kwargs):
+        kwargs.setdefault('delete', False)
+        return original_named_temp_file(*args, **kwargs)
+
+    pisa_files.tempfile.NamedTemporaryFile = reopenable_named_temp_file
+    try:
+        pdf = pisa.pisaDocument(
+            BytesIO(html.encode('UTF-8')),
+            result,
+            encoding='UTF-8',
+            link_callback=link_callback,
+        )
+    finally:
+        pisa_files.tempfile.NamedTemporaryFile = original_named_temp_file
+
+    if not pdf.err:
+        return HttpResponse(result.getvalue(), content_type='application/pdf')
+    return None
+
+
+def get_pdf_font_context():
+    return {}
+
+
+def _build_evaluation_report_context(evaluation):
+    items = EvaluationItem.objects.filter(evaluation=evaluation, status='non_compliant').select_related(
+        'criterion', 'criterion__section'
+    ).order_by('criterion__section__sort_order', 'criterion__sort_order', 'id')
+
+    grouped_items = OrderedDict()
+    images_by_criterion = {}
+    for image in EvaluationImage.objects.filter(evaluation=evaluation).select_related('criterion').order_by('id'):
+        images_by_criterion.setdefault(image.criterion_id, []).append(image)
+
+    for item in items:
+        section = item.criterion.section
+        grouped_items.setdefault(section, [])
+        grouped_items[section].append(item)
+
+    evaluation.calculate_results()
+    evaluation.save(update_fields=['total_points', 'percentage', 'classification'])
+
+    def _person_name(user):
+        if not user:
+            return ''
+        profile_name = getattr(getattr(user, 'userprofile', None), 'full_name', '')
+        if (profile_name or '').strip():
+            return profile_name.strip()
+        full_name = getattr(user, 'get_full_name', lambda: '')() or ''
+        return full_name.strip()
+
+    signature_rows = []
+    signature_rows.extend(
+        {
+            'name': member.full_name,
+            'job_title': member.job_title,
+        }
+        for member in evaluation.team_members.all()
+        if (member.full_name or '').strip() or (member.job_title or '').strip()
+    )
+    if evaluation.reviewer:
+        signature_rows.append({
+            'name': _person_name(evaluation.reviewer),
+            'job_title': 'المراجع الفني',
+        })
+
+    return {
+        'evaluation': evaluation,
+        'grouped_items': grouped_items,
+        'images_by_criterion': images_by_criterion,
+        'signature_rows': signature_rows,
+        'non_compliant_total': items.count(),
+    }
+
+
+@login_required
+def evaluation_pdf(request, pk):
+    evaluation = get_object_or_404(
+        Evaluation.objects.select_related('establishment', 'inspector', 'reviewer').prefetch_related('team_members'),
+        pk=pk,
+    )
+    context = _build_evaluation_report_context(evaluation)
+    response = render_to_pdf('inspections/evaluation_pdf_official.html', context)
+    if response:
+        response['Content-Disposition'] = f'inline; filename="official_evaluation_{evaluation.id}.pdf"'
+        return response
+    return HttpResponse('حدث خطأ أثناء إنشاء ملف PDF')
+

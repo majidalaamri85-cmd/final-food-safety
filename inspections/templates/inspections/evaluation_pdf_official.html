@@ -1,0 +1,737 @@
+{% load inspection_extras %}
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ 'تقرير زيارة ميدانية إلى شركة:'|arabic_pdf }} {{ evaluation.establishment.commercial_name|arabic_pdf }}</title>
+  <style>
+    @font-face { font-family: PdfArabic; src: url("/static/fonts/tahoma.ttf"); font-weight: normal; }
+    @font-face { font-family: PdfArabic; src: url("/static/fonts/tahomabd.ttf"); font-weight: bold; }
+    @font-face { font-family: PdfArabicBold; src: url("/static/fonts/tahomabd.ttf"); font-weight: bold; }
+    @page { size: A4 landscape; margin: 1.2cm 1.4cm 1.4cm 1.4cm; }
+
+    body {
+      font-family: PdfArabic, DejaVu Sans, Arial, sans-serif;
+      font-size: 12px;
+      color: #1e293b;
+      direction: rtl;
+      line-height: 1.6;
+      background: #f7fbfb;
+    }
+
+    table, tr, td, div, span, p {
+      font-family: PdfArabic, DejaVu Sans, Arial, sans-serif;
+    }
+
+    .meta-table,
+    .section-table,
+    .sign-table,
+    .section-title-table,
+    .summary-table {
+      width: 100%;
+      border-collapse: collapse;
+      direction: rtl;
+    }
+
+    .page-shell {
+      width: 735px;
+      margin: 0 auto;
+      position: relative;
+      background: #ffffff;
+      border: 1px solid #d9e3e2;
+    }
+
+    .page-outline {
+      border: 8px solid #eef6f5;
+      padding: 0;
+    }
+
+    .report-header {
+      width: 100%;
+      margin: 0 auto 10px;
+      text-align: center;
+      border: 0;
+    }
+
+    .report-header img {
+      width: 100%;
+      height: auto;
+      border: 0;
+      display: block;
+    }
+
+    .content-shell {
+      width: 670px;
+      margin: 0 auto 132px;
+      padding: 6px 16px 16px;
+      background: transparent;
+    }
+
+    .main-content {
+      width: 552px;
+      margin: 0 auto;
+    }
+
+    .report-title-wrap {
+      margin-top: 12px;
+      margin-bottom: 18px;
+      text-align: center;
+      width: 100%;
+    }
+
+    .report-title,
+    strong,
+    th {
+      font-family: PdfArabicBold, PdfArabic, DejaVu Sans, Arial, sans-serif;
+    }
+
+    .report-title {
+      display: block;
+      padding: 0;
+      font-size: 16px;
+      font-weight: bold;
+      color: #000000;
+      background: transparent;
+      border: 0;
+      border-radius: 0;
+      line-height: 1.7;
+      direction: rtl;
+      text-align: center;
+      width: 100%;
+    }
+
+    .report-title-label {
+      padding-bottom: 3px;
+      white-space: normal;
+      color: #2f8f8f;
+      color: #000000;
+    }
+
+    .report-company-row {
+      margin-top: 2px;
+      text-align: center;
+    }
+
+    .report-company-name {
+      color: #000000;
+      display: inline;
+      margin-right: 0;
+      padding: 2px 10px;
+      color: #1e6666;
+      background: #e6f4f3;
+      border: 0;
+      border-radius: 8px;
+      font-family: PdfArabicBold, PdfArabic, DejaVu Sans, Arial, sans-serif;
+      white-space: normal;
+    }
+
+    .box {
+      border: 1px solid #d8e3e2;
+      padding: 10px;
+      margin-top: 10px;
+      margin-bottom: 16px;
+      background: #ffffff;
+    }
+
+    .summary-table {
+      margin-top: 8px;
+      margin-bottom: 10px;
+    }
+
+    .summary-table td {
+      width: 25%;
+      border: 1px solid #d8e3e2;
+      background: #fbfefe;
+      text-align: center;
+      padding: 10px 6px;
+    }
+
+    .summary-label {
+      display: block;
+      color: #6a7a7c;
+      font-size: 10px;
+      margin-bottom: 4px;
+    }
+
+    .summary-value {
+      display: block;
+      color: #2f8f8f;
+      font-size: 15px;
+      font-family: PdfArabicBold, PdfArabic, DejaVu Sans, Arial, sans-serif;
+    }
+
+    .summary-accent-good {
+      background: #edf8f6 !important;
+    }
+
+    .summary-accent-alert {
+      background: #fff5f3 !important;
+    }
+
+    .meta-table td {
+      border: 1px solid #dbe4e6;
+      padding: 9px 8px;
+      vertical-align: top;
+      font-size: 12px;
+      text-align: right;
+      background: #ffffff;
+    }
+
+    .meta-table strong {
+      font-size: 12px;
+    }
+
+    .field-row {
+      width: 100%;
+      border-collapse: collapse;
+      direction: rtl;
+    }
+
+    .field-row td {
+      border: 0;
+      padding: 0;
+      vertical-align: top;
+    }
+
+    .field-label {
+      width: 44%;
+      text-align: right;
+      font-family: PdfArabicBold, PdfArabic, DejaVu Sans, Arial, sans-serif;
+      padding-left: 8px;
+      color: #2f8f8f;
+    }
+
+    .field-value {
+      width: 56%;
+      text-align: right;
+      color: #111827;
+    }
+
+    .section-title-table {
+      margin-top: 14px;
+      margin-bottom: 0;
+    }
+
+    .section-title-table td {
+      background: #2f8f8f;
+      color: #fff;
+      border: 1px solid #257676;
+      padding: 8px 10px;
+      font-weight: bold;
+      font-size: 13px;
+      vertical-align: top;
+    }
+
+    .section-title-text {
+      text-align: right;
+      width: 92%;
+    }
+
+    .section-title-number {
+      text-align: center;
+      width: 8%;
+      white-space: nowrap;
+    }
+
+    .section-table th,
+    .section-table td,
+    .sign-table th,
+    .sign-table td {
+      border: 1px solid #d9e3e5;
+      padding: 7px;
+      text-align: right;
+      vertical-align: top;
+      font-size: 12px;
+    }
+
+    .section-table th,
+    .sign-table th {
+      background: #edf7f7;
+      color: #256d6d;
+      font-weight: bold;
+      font-size: 12px;
+    }
+
+    .result-summary-row td {
+      font-family: PdfArabicBold, PdfArabic, DejaVu Sans, Arial, sans-serif;
+      padding-top: 10px;
+      padding-bottom: 10px;
+    }
+
+    .result-summary-excellent td {
+      background: #edf8f6;
+    }
+
+    .result-summary-good td {
+      background: #f3faf8;
+    }
+
+    .result-summary-acceptable td {
+      background: #fff8ec;
+    }
+
+    .result-summary-weak td {
+      background: #fff1ef;
+    }
+
+    .result-summary-class {
+      font-family: PdfArabicBold, PdfArabic, DejaVu Sans, Arial, sans-serif;
+      text-align: center;
+    }
+
+    .result-summary-percentage {
+      font-family: PdfArabicBold, PdfArabic, DejaVu Sans, Arial, sans-serif;
+      text-align: center;
+    }
+
+    .result-summary-class.excellent {
+      color: #0f766e;
+    }
+
+    .result-summary-percentage.excellent {
+      color: #0f766e;
+    }
+
+    .result-summary-class.good {
+      color: #1d7a6f;
+    }
+
+    .result-summary-percentage.good {
+      color: #1d7a6f;
+    }
+
+    .result-summary-class.acceptable {
+      color: #b7791f;
+    }
+
+    .result-summary-percentage.acceptable {
+      color: #b7791f;
+    }
+
+    .result-summary-class.weak {
+      color: #c0392b;
+    }
+
+    .result-summary-percentage.weak {
+      color: #c0392b;
+    }
+
+    .row-even td {
+      background: #ffffff;
+    }
+
+    .row-odd td {
+      background: #f8fbfb;
+    }
+
+    .multiline-cell {
+      white-space: pre-line;
+      line-height: 1.7;
+      text-align: right;
+      direction: ltr;
+    }
+
+    .code-cell {
+      text-align: center;
+      font-family: PdfArabicBold, PdfArabic, DejaVu Sans, Arial, sans-serif;
+      color: #2f8f8f;
+      background: #f3faf9;
+    }
+
+    .criterion-cell {
+      background: #fcfefe;
+    }
+
+    .criterion-risk {
+      margin-top: 4px;
+      font-size: 10px;
+      font-family: PdfArabicBold, PdfArabic, DejaVu Sans, Arial, sans-serif;
+      text-align: right;
+    }
+
+    .remarks-cell {
+      background: #fffdf8;
+    }
+
+    .result-compliant {
+      color: #2f8f8f;
+      font-weight: bold;
+    }
+
+    .result-non-compliant {
+      color: #c0392b;
+      font-weight: bold;
+    }
+
+    .result-na {
+      color: #444;
+      font-weight: bold;
+    }
+
+    .risk-cell {
+      font-family: PdfArabicBold, PdfArabic, DejaVu Sans, Arial, sans-serif;
+      text-align: center;
+    }
+
+    .risk-low {
+      color: #2f8f8f;
+    }
+
+    .risk-medium {
+      color: #b7791f;
+    }
+
+    .risk-high {
+      color: #c2410c;
+    }
+
+    .risk-critical {
+      color: #c0392b;
+    }
+
+    .evidence-block {
+      margin-bottom: 4px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid #eef3f4;
+    }
+
+    .evidence-caption {
+      font-size: 10px;
+      color: #5e6d70;
+      margin-bottom: 2px;
+    }
+
+    .evidence-img {
+      width: 90px;
+      height: auto;
+      border: 1px solid #d8dde1;
+      padding: 2px;
+      background: #fff;
+      margin-top: 3px;
+      margin-bottom: 3px;
+    }
+
+    .note-row {
+      background: #fffaf0 !important;
+    }
+
+    .note-label {
+      color: #8a5b17;
+    }
+
+    .grading-note {
+      margin-top: 8px;
+      padding: 6px 8px;
+      border: 1px solid #e4ecec;
+      background: #f8fbfb;
+      color: #5d6c6f;
+      font-size: 10px;
+      text-align: center;
+    }
+
+    .sign-table td {
+      height: 40px;
+    }
+
+    .team-member-role,
+    .team-member-name {
+      font-size: 22px !important;
+      font-family: PdfArabicBold, PdfArabic, DejaVu Sans, Arial, sans-serif;
+      line-height: 1.4;
+    }
+
+    .team-members-table td {
+      font-size: 22px !important;
+      font-family: PdfArabicBold, PdfArabic, DejaVu Sans, Arial, sans-serif;
+    }
+
+    .approval-signature {
+      width: 100%;
+      margin-top: 14px;
+      text-align: left;
+      border: 0;
+      direction: ltr;
+      page-break-inside: avoid;
+    }
+
+    .approval-signature img {
+      width: 300px;
+      height: auto;
+      border: 0;
+      display: inline-block;
+    }
+
+    .footer-note {
+      margin-top: 12px;
+      margin-bottom: 8px;
+      padding-top: 8px;
+      border-top: 1px solid #dce6e7;
+      font-size: 11px;
+      text-align: center;
+      color: #4b5563;
+    }
+  </style>
+</head>
+<body>
+
+<div class="page-shell">
+  <div class="page-outline">
+    <div class="report-header"><img src="/static/images/report_header.png" alt="{{ 'ترويسة التقرير'|arabic_pdf }}"></div>
+    <div class="content-shell">
+      <div class="main-content">
+        <div class="report-title-wrap">
+          <div class="report-title">
+            <div class="report-title-label">{{ 'تقرير زيارة ميدانية إلى شركة:'|arabic_pdf }}</div>
+            <div class="report-company-row"><span class="report-company-name">{{ evaluation.establishment.commercial_name|arabic_pdf }}</span></div>
+          </div>
+        </div>
+        <div class="box">
+          {% with status=evaluation.establishment_status %}
+          <table class="summary-table" dir="rtl">
+            <tr>
+              <td class="summary-accent-good">
+                <span class="summary-label">{{ 'نسبة التقييم'|arabic_pdf }}</span>
+                <span class="summary-value">{{ evaluation.percentage|arabic_digits }}%</span>
+              </td>
+              <td class="summary-accent-good">
+                <span class="summary-label">{{ 'التصنيف النهائي'|arabic_pdf }}</span>
+                <span class="summary-value">{{ evaluation.get_classification_display|arabic_pdf }}</span>
+              </td>
+              <td>
+                <span class="summary-label">{{ 'قرار المنح والمتابعة'|arabic_pdf }}</span>
+                <span class="summary-value">{{ status.label|arabic_pdf }}</span>
+              </td>
+              <td class="summary-accent-alert">
+                <span class="summary-label">{{ 'عدد البنود غير المستوفية'|arabic_pdf }}</span>
+                <span class="summary-value">{{ non_compliant_total|arabic_digits }}</span>
+              </td>
+            </tr>
+          </table>
+          {% endwith %}
+
+          <table class="meta-table" dir="rtl">
+            <tr>
+              <td>
+                <table class="field-row">
+                  <tr>
+                    <td class="field-value">{{ evaluation.visit_date|date:"Y/m/d"|arabic_digits }}</td>
+                    <td class="field-label">{{ 'تاريخ الزيارة:'|arabic_pdf }}</td>
+                  </tr>
+                </table>
+              </td>
+              <td>
+                <table class="field-row">
+                  <tr>
+                    <td class="field-value">{{ evaluation.establishment.commercial_name|arabic_pdf }}</td>
+                    <td class="field-label">{{ 'اسم المنشأة:'|arabic_pdf }}</td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <table class="field-row">
+                  <tr>
+                    <td class="field-value">{{ evaluation.report_reference_no }}</td>
+                    <td class="field-label">{{ 'رقم مرجع التقرير:'|arabic_pdf }}</td>
+                  </tr>
+                </table>
+              </td>
+              <td>
+                <table class="field-row">
+                  <tr>
+                    <td class="field-value">{{ evaluation.establishment.reference_no }}</td>
+                    <td class="field-label">{{ 'رقم مرجع المنشأة:'|arabic_pdf }}</td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <table class="field-row">
+                  <tr>
+                    <td class="field-value">{{ evaluation.inspector.get_full_name|default:''|arabic_pdf }}</td>
+                    <td class="field-label">{{ 'المفتش:'|arabic_pdf }}</td>
+                  </tr>
+                </table>
+              </td>
+              <td>
+                <table class="field-row">
+                  <tr>
+                    <td class="field-value">{{ evaluation.establishment.license_no|arabic_digits }}</td>
+                    <td class="field-label">{{ 'رقم الترخيص:'|arabic_pdf }}</td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <table class="field-row">
+                  <tr>
+                    <td class="field-value">{{ evaluation.establishment.wilayat.name_ar|arabic_pdf }}</td>
+                    <td class="field-label">{{ 'الولاية:'|arabic_pdf }}</td>
+                  </tr>
+                </table>
+              </td>
+              <td>
+                <table class="field-row">
+                  <tr>
+                    <td class="field-value">{{ evaluation.establishment.governorate.name_ar|arabic_pdf }}</td>
+                    <td class="field-label">{{ 'المحافظة:'|arabic_pdf }}</td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            {% if evaluation.notes %}
+            <tr>
+              <td colspan="2" class="note-row">
+                <strong class="note-label">{{ 'ملاحظات عامة:'|arabic_pdf }}</strong>
+                {{ evaluation.notes|arabic_pdf }}
+              </td>
+            </tr>
+            {% endif %}
+          </table>
+        </div>
+
+        {% if grouped_items %}
+        {% for section, items in grouped_items.items %}
+          <table class="section-title-table" dir="rtl">
+            <tr>
+              <td class="section-title-text">{{ section.name_ar|arabic_pdf }}</td>
+              <td class="section-title-number">{{ section.sort_order }}.</td>
+            </tr>
+          </table>
+          <table class="section-table" dir="rtl">
+            <thead>
+              <tr class="{% cycle 'row-even' 'row-odd' %}">
+                <th style="width: 20%;">{{ 'الأدلة / الصور'|arabic_pdf }}</th>
+                <th style="width: 20%;">{{ 'الملاحظات / الإجراء التصحيحي'|arabic_pdf }}</th>
+                <th style="width: 11%;">{{ 'النتيجة'|arabic_pdf }}</th>
+                <th style="width: 43%;">{{ 'البند'|arabic_pdf }}</th>
+                <th style="width: 6%;">{{ 'م'|arabic_pdf }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in items %}
+              <tr>
+                <td>
+                  {% for image in images_by_criterion|get_item:item.criterion_id %}
+                    <div class="evidence-block">
+                      {% if image.caption %}<div class="evidence-caption">{{ image.caption|arabic_pdf }}</div>{% endif %}
+                      <img src="{{ image.image.url }}" class="evidence-img" alt="{{ 'صورة'|arabic_pdf }}">
+                    </div>
+                  {% empty %}{% endfor %}
+                </td>
+                <td class="remarks-cell">
+                  <div class="multiline-cell">{{ item.remarks|default:''|arabic_pdf_block }}</div>
+                  {% if item.corrective_action %}
+                    <div class="evidence-caption">{{ 'الإجراء التصحيحي'|arabic_pdf }}</div>
+                    <div class="multiline-cell">{{ item.corrective_action|arabic_pdf_block }}</div>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if item.status == 'compliant' %}
+                    <span class="result-compliant">{{ 'مستوفي'|arabic_pdf }}</span>
+                  {% elif item.status == 'non_compliant' %}
+                    <span class="result-non-compliant">{{ 'غير مستوفي'|arabic_pdf }}</span>
+                  {% elif item.status == 'na' %}
+                    <span class="result-na">{{ 'لا ينطبق'|arabic_pdf }}</span>
+                  {% else %}
+                    {{ 'ملاحظة'|arabic_pdf }}
+                  {% endif %}
+                </td>
+                <td class="multiline-cell criterion-cell">
+                  <div>{{ item.criterion.text_ar|arabic_pdf_block }}</div>
+                  <div class="criterion-risk risk-{{ item.criterion.risk_level }}">
+                    {% if item.criterion.risk_level == 'high' %}
+                      {{ '(مستوى الخطورة عالي)'|arabic_pdf }}
+                    {% elif item.criterion.risk_level == 'medium' %}
+                      {{ '(مستوى الخطورة متوسط)'|arabic_pdf }}
+                    {% elif item.criterion.risk_level == 'low' %}
+                      {{ '(مستوى الخطورة منخفض)'|arabic_pdf }}
+                    {% elif item.criterion.risk_level == 'critical' %}
+                      {{ '(مستوى الخطورة حرج)'|arabic_pdf }}
+                    {% endif %}
+                  </div>
+                </td>
+                <td class="code-cell">{{ item.criterion.code }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% endfor %}
+        {% else %}
+          <table class="section-title-table" dir="rtl">
+            <tr>
+              <td class="section-title-text" colspan="2">{{ 'البنود غير المستوفية'|arabic_pdf }}</td>
+            </tr>
+          </table>
+          <table class="section-table" dir="rtl">
+            <tbody>
+              <tr>
+                <td>{{ 'لا توجد بنود غير مستوفية في هذا التقييم.'|arabic_pdf }}</td>
+              </tr>
+            </tbody>
+          </table>
+        {% endif %}
+
+        <table class="section-title-table" dir="rtl">
+          <tr>
+            <td class="section-title-text" colspan="2">{{ 'نتيجة التقييم'|arabic_pdf }}</td>
+          </tr>
+        </table>
+        {% with status=evaluation.establishment_status %}
+        <table class="section-table" dir="rtl">
+          <thead>
+            <tr>
+              <th style="width: 60%;">{{ 'الوصف'|arabic_pdf }}</th>
+              <th style="width: 20%;">{{ 'النسبة'|arabic_pdf }}</th>
+              <th style="width: 20%;">{{ 'التصنيف'|arabic_pdf }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="result-summary-row {% if status.blocks_grant %}result-summary-weak{% elif evaluation.classification == 'excellent' %}result-summary-excellent{% elif evaluation.classification == 'good' %}result-summary-good{% elif evaluation.classification == 'acceptable' %}result-summary-acceptable{% else %}result-summary-weak{% endif %}">
+              <td>
+                {{ status.description|arabic_pdf }}
+              </td>
+              <td class="result-summary-percentage {{ evaluation.classification }}">{{ evaluation.percentage|arabic_digits }}%</td>
+              <td class="result-summary-class {{ evaluation.classification }}">{{ status.label|arabic_pdf }}</td>
+            </tr>
+          </tbody>
+        </table>
+        {% endwith %}
+        <div class="grading-note">{{ 'يتم اعتماد قرار المنح والمتابعة بناءً على النسبة المحسوبة وعلى البنود عالية الخطورة غير المستوفية.'|arabic_pdf }}</div>
+
+        <table class="section-title-table" dir="rtl">
+          <tr>
+            <td class="section-title-text" colspan="2">{{ 'أعضاء فريق التقييم'|arabic_pdf }}</td>
+          </tr>
+        </table>
+        <table class="sign-table team-members-table" dir="rtl">
+          <thead>
+            <tr>
+              <th style="width: 45%;">{{ 'المسمى الوظيفي'|arabic_pdf }}</th>
+              <th style="width: 45%;">{{ 'الاسم'|arabic_pdf }}</th>
+              <th style="width: 10%;">{{ 'م'|arabic_pdf }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for member in signature_rows %}
+            <tr>
+              <td><div class="team-member-role">{{ member.job_title|default:' '|arabic_pdf }}</div></td>
+              <td><div class="team-member-name">{{ member.name|default:' '|arabic_pdf }}</div></td>
+              <td>{{ forloop.counter }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        <div class="approval-signature">
+          <img src="/static/images/report_signature.png" alt="Approval signature">
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
