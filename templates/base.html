@@ -27,7 +27,7 @@
   <div class="container">
     <a class="navbar-brand d-flex align-items-center gap-2" href="/">
       <img src="{% static 'images/logo.png' %}?v=2" alt="نظام سلامة الغذاء" style="height:56px; width:auto; object-fit:contain;">
-      <span class="brand-text">نظام إلكتروني للرقابة الغذائية</span>
+      <span class="brand-text" data-default-title="نظام إلكتروني للرقابة الغذائية">نظام إلكتروني للرقابة الغذائية</span>
     </a>
     <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
       <span class="navbar-toggler-icon"></span>
@@ -95,6 +95,16 @@
 <script>
   document.addEventListener('DOMContentLoaded', function() {
     var path = window.location.pathname;
+    var normalizedPath = path.replace(/\/+$/, '') || '/';
+
+    var brandText = document.querySelector('.brand-text');
+    if (brandText) {
+      var defaultTitle = brandText.getAttribute('data-default-title') || brandText.textContent.trim();
+      var currentTitle = (document.title || '').trim();
+      var shouldUseDefault = normalizedPath === '/' || !currentTitle || currentTitle === defaultTitle;
+      brandText.textContent = shouldUseDefault ? defaultTitle : currentTitle;
+    }
+
     document.querySelectorAll('.nav-pill').forEach(function(a) {
       if (a.getAttribute('href') === path || (a.getAttribute('href') !== '/' && path.startsWith(a.getAttribute('href')))) {
         a.classList.add('active');
