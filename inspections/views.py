@@ -782,12 +782,18 @@ def evaluation_update(request, pk):
                 if item.status == 'non_compliant' and not (item.corrective_action or '').strip():
                     item.corrective_action = _build_default_corrective_action(item)
                     item.save(update_fields=['corrective_action'])
-                image_field = request.FILES.get(f'image_{item.id}')
-                caption = request.POST.get(f'caption_{item.id}', '').strip()
+            # معالجة الصور لجميع البنود (وليس فقط المعدّلة) لأن المستخدم قد يرفع
+            # صورة لبند لم يتغير فيه حقل نصي فلا يظهر في formset.save()
+            for form in formset.forms:
+                form_item = form.instance
+                if not form_item.pk:
+                    continue
+                image_field = request.FILES.get(f'image_{form_item.id}')
+                caption = request.POST.get(f'caption_{form_item.id}', '').strip()
                 if image_field:
                     EvaluationImage.objects.create(
                         evaluation=evaluation,
-                        criterion=item.criterion,
+                        criterion=form_item.criterion,
                         image=image_field,
                         caption=caption,
                     )
