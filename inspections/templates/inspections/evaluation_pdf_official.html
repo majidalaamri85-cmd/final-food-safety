@@ -332,6 +332,7 @@
     }
 
     .code-cell {
+      width: 8%;
       text-align: center;
       font-family: PdfArabicBold, PdfArabic, DejaVu Sans, Arial, sans-serif;
       color: #2f8f8f;
@@ -339,6 +340,7 @@
     }
 
     .criterion-cell {
+      width: 24%;
       background: #fcfefe;
     }
 
@@ -350,7 +352,17 @@
     }
 
     .remarks-cell {
+      width: 24%;
       background: #fffdf8;
+    }
+
+    .evidence-cell {
+      width: 30%;
+    }
+
+    .result-cell {
+      width: 14%;
+      text-align: center;
     }
 
     .result-compliant {
@@ -604,17 +616,17 @@
           <table class="section-table" dir="rtl">
             <thead>
               <tr class="{% cycle 'row-even' 'row-odd' %}">
-                <th style="width: 20%;">{{ 'الأدلة / الصور'|arabic_pdf }}</th>
-                <th style="width: 20%;">{{ 'الملاحظات / الإجراء التصحيحي'|arabic_pdf }}</th>
-                <th style="width: 11%;">{{ 'النتيجة'|arabic_pdf }}</th>
-                <th style="width: 43%;">{{ 'البند'|arabic_pdf }}</th>
-                <th style="width: 6%;">{{ 'م'|arabic_pdf }}</th>
+                <th style="width: 30%;">{{ 'الأدلة / الصور'|arabic_pdf }}</th>
+                <th style="width: 24%;">{{ 'الملاحظات / الإجراء التصحيحي'|arabic_pdf }}</th>
+                <th style="width: 14%;">{{ 'النتيجة'|arabic_pdf }}</th>
+                <th style="width: 24%;">{{ 'البند'|arabic_pdf }}</th>
+                <th style="width: 8%;">{{ 'م'|arabic_pdf }}</th>
               </tr>
             </thead>
             <tbody>
               {% for item in items %}
               <tr>
-                <td>
+                <td class="evidence-cell">
                   {% for image in images_by_criterion|get_item:item.criterion_id %}
                     <div class="evidence-block">
                       {% if image.caption %}<div class="evidence-caption">{{ image.caption|arabic_pdf }}</div>{% endif %}
@@ -629,7 +641,7 @@
                     <div class="multiline-cell">{{ item.corrective_action|arabic_pdf_block }}</div>
                   {% endif %}
                 </td>
-                <td>
+                <td class="result-cell">
                   {% if item.status == 'compliant' %}
                     <span class="result-compliant">{{ 'مستوفي'|arabic_pdf }}</span>
                   {% elif item.status == 'non_compliant' %}
