@@ -235,11 +235,14 @@ def _build_default_corrective_action(item):
     )
 
 
-def _sync_corrective_actions_for_evaluation(evaluation, user):
-    items = list(
-        EvaluationItem.objects.filter(evaluation=evaluation)
-        .select_related('criterion')
-    )
+def _sync_corrective_actions_for_evaluation(evaluation, user, pre_loaded_items=None):
+    if pre_loaded_items is not None:
+        items = pre_loaded_items
+    else:
+        items = list(
+            EvaluationItem.objects.filter(evaluation=evaluation)
+            .select_related('criterion')
+        )
     existing_logs = {
         log.criterion_id: log
         for log in CorrectiveActionLog.objects.filter(evaluation=evaluation, criterion__isnull=False)
@@ -768,39 +771,51 @@ def evaluation_update(request, pk):
         record_formset = EvaluationRecordFormSet(request.POST, queryset=record_queryset, prefix='records')
         team_formset = EvaluationTeamMemberFormSet(request.POST, queryset=team_queryset, prefix='team')
         if meta_form.is_valid() and formset.is_valid() and record_formset.is_valid() and team_formset.is_valid():
-            meta_form.save()
-            items = formset.save()
-            record_formset.save()
-            team_members = team_formset.save(commit=False)
-            for deleted_member in team_formset.deleted_objects:
-                deleted_member.delete()
-            for index, member in enumerate(team_members, start=1):
-                member.evaluation = evaluation
-                member.sort_order = index
-                member.save()
-            for item in items:
-                if item.status == 'non_compliant' and not (item.corrective_action or '').strip():
-                    item.corrective_action = _build_default_corrective_action(item)
-                    item.save(update_fields=['corrective_action'])
-            # معالجة الصور لجميع البنود (وليس فقط المعدّلة) لأن المستخدم قد يرفع
-            # صورة لبند لم يتغير فيه حقل نصي فلا يظهر في formset.save()
-            for form in formset.forms:
-                form_item = form.instance
-                if not form_item.pk:
-                    continue
-                image_field = request.FILES.get(f'image_{form_item.id}')
-                caption = request.POST.get(f'caption_{form_item.id}', '').strip()
-                if image_field:
-                    EvaluationImage.objects.create(
-                        evaluation=evaluation,
-                        criterion=form_item.criterion,
-                        image=image_field,
-                        caption=caption,
-                    )
-            _sync_corrective_actions_for_evaluation(evaluation, request.user)
-            evaluation.calculate_results()
-            evaluation.save(update_fields=['total_points', 'percentage', 'classification'])
-            EvaluationActivityLog.objects.create(evaluation=evaluation, user=request.user, action='حفظ التقييم', notes='تم حفظ بنود التقييم.')
+            from django.db import transaction as _tx
+            with _tx.atomic():
+                meta_form.save()
+                formset.save()
+                record_formset.save()
+                team_members = team_formset.save(commit=False)
+                for deleted_member in team_formset.deleted_objects:
+                    deleted_member.delete()
+                for index, member in enumerate(team_members, start=1):
+                    member.evaluation = evaluation
+                    member.sort_order = index
+                    member.save()
+
+                # استخدام البيانات الموجودة في الذاكرة بدل إعادة الجلب من DB
+                all_items = [f.instance for f in formset.forms if f.instance.pk]
+                all_records = [f.instance for f in record_formset.forms if f.instance.pk]
+
+                for item in all_items:
+                    if item.status == 'non_compliant' and not (item.corrective_action or '').strip():
+                        item.corrective_action = _build_default_corrective_action(item)
+                        item.save(update_fields=['corrective_action'])
+
+                # معالجة الصور لجميع البنود (وليس فقط المعدّلة)
+                for form in formset.forms:
+                    form_item = form.instance
+                    if not form_item.pk:
+                        continue
+                    image_field = request.FILES.get(f'image_{form_item.id}')
+                    caption = request.POST.get(f'caption_{form_item.id}', '').strip()
+                    if image_field:
+                        EvaluationImage.objects.create(
+                            evaluation=evaluation,
+                            criterion=form_item.criterion,
+                            image=image_field,
+                            caption=caption,
+                        )
+
+                # تمرير البيانات الموجودة في الذاكرة لتجنب استعلامات DB إضافية
+                _sync_corrective_actions_for_evaluation(evaluation, request.user, pre_loaded_items=all_items)
+                evaluation.calculate_results(items=all_items, record_checks=all_records)
+                evaluation.save(update_fields=['total_points', 'percentage', 'classification'])
+                EvaluationActivityLog.objects.create(evaluation=evaluation, user=request.user, action='حفظ التقييم', notes='تم حفظ بنود التقييم.')
+
+            # مسح كاش PDF بعد الحفظ حتى لا يُعرض تقرير قديم
+            cache.delete(f'pdf_bytes:eval:{evaluation.pk}')
             messages.success(request, f'تم حفظ التقييم بنجاح. النسبة: {evaluation.percentage}% - التصنيف: {evaluation.get_classification_display()}')
             return redirect('evaluation_update', pk=evaluation.pk)
     else:

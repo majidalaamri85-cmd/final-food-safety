@@ -229,9 +229,11 @@ class Evaluation(models.Model):
         serial = self.pk or 0
         return f'REP-{visit.year}-{serial:06d}'
 
-    def calculate_results(self):
-        items = list(self.items.select_related('criterion'))
-        record_checks = list(self.record_checks.select_related('record'))
+    def calculate_results(self, items=None, record_checks=None):
+        if items is None:
+            items = list(self.items.select_related('criterion'))
+        if record_checks is None:
+            record_checks = list(self.record_checks.select_related('record'))
         max_points = sum(i.criterion.weight for i in items if i.status != 'na')
         max_points += sum(1 for record_check in record_checks if record_check.record.is_active)
         awarded = sum(Decimal(i.score_awarded) for i in items)
