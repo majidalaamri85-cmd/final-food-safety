@@ -8,6 +8,8 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.contrib.auth.views import PasswordChangeDoneView, PasswordChangeView
 from django.contrib.staticfiles import finders
 from django.core.cache import cache
 from django.core.paginator import Paginator
@@ -18,6 +20,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import get_template
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
+from django.urls import reverse_lazy
 from openpyxl import Workbook
 from xhtml2pdf import files as pisa_files
 from xhtml2pdf import pisa
@@ -30,6 +33,7 @@ from .forms import (
     EvaluationItemForm,
     EvaluationRecordCheckForm,
     EvaluationTeamMemberForm,
+    StyledPasswordChangeForm,
 )
 from .models import (
     CorrectiveActionLog,
@@ -116,6 +120,29 @@ READY_CORRECTIVE_ACTIONS_BY_CODE = {'2.1': 'نقل النشاط أو إنشاء 
  '11.3': 'إنشاء وتحديث سجلات تدريب موثقة لكل موظف مع حفظها ومراجعتها.'}
 
 READY_CORRECTIVE_ACTIONS_BY_SECTION_PREFIX = {}
+
+
+class SuperuserPasswordAccessMixin(LoginRequiredMixin, UserPassesTestMixin):
+    def test_func(self):
+        return self.request.user.is_superuser
+
+    def handle_no_permission(self):
+        messages.error(self.request, 'تغيير كلمة المرور متاح حالياً لمدير النظام فقط خلال مرحلة التجربة.')
+        return redirect('dashboard')
+
+
+class UserPasswordChangeView(SuperuserPasswordAccessMixin, PasswordChangeView):
+    form_class = StyledPasswordChangeForm
+    template_name = 'inspections/password_change.html'
+    success_url = reverse_lazy('password_change_done')
+
+    def form_valid(self, form):
+        messages.success(self.request, 'تم تغيير كلمة المرور بنجاح.')
+        return super().form_valid(form)
+
+
+class UserPasswordChangeDoneView(SuperuserPasswordAccessMixin, PasswordChangeDoneView):
+    template_name = 'inspections/password_change_done.html'
 
 
 def _normalize_digit_text(value):

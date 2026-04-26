@@ -45,6 +45,11 @@
         <a class="btn btn-new-eval ms-2" href="/evaluations/new/">
           <i class="fa-solid fa-plus me-1"></i>تقييم جديد
         </a>
+        {% if user.is_authenticated and user.is_superuser %}
+        <a class="btn btn-outline-light rounded-pill ms-2" href="/password/change/">
+          <i class="fa-solid fa-key me-1"></i>تغيير كلمة المرور
+        </a>
+        {% endif %}
         {% if user.is_authenticated %}
         <a class="btn btn-outline-light rounded-pill ms-2" href="/logout/">
           <i class="fa-solid fa-right-from-bracket me-1"></i>تسجيل خروج

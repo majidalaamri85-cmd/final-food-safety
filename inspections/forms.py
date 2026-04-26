@@ -1,4 +1,5 @@
 from django import forms
+from django.contrib.auth.forms import PasswordChangeForm
 from django.utils import timezone
 
 from .models import (
@@ -197,3 +198,20 @@ class CorrectiveActionForm(forms.ModelForm):
             'due_date': 'تاريخ الاستحقاق',
             'status': 'حالة الإجراء',
         }
+
+
+class StyledPasswordChangeForm(PasswordChangeForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        field_config = {
+            'old_password': ('كلمة المرور الحالية', 'current-password'),
+            'new_password1': ('كلمة المرور الجديدة', 'new-password'),
+            'new_password2': ('تأكيد كلمة المرور الجديدة', 'new-password'),
+        }
+        for field_name, (label, autocomplete) in field_config.items():
+            field = self.fields[field_name]
+            field.label = label
+            field.widget.attrs.update({
+                'class': 'form-control',
+                'autocomplete': autocomplete,
+            })
