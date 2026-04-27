@@ -586,14 +586,6 @@
                 </table>
               </td>
             </tr>
-            {% if evaluation.notes %}
-            <tr>
-              <td colspan="2" class="note-row">
-                <strong class="note-label">{{ 'ملاحظات عامة:'|arabic_pdf }}</strong>
-                {{ evaluation.notes|arabic_pdf }}
-              </td>
-            </tr>
-            {% endif %}
           </table>
         </div>
 
@@ -705,6 +697,21 @@
         </table>
         {% endwith %}
         <div class="grading-note">{{ 'يتم اعتماد نتيجة التقييم بناءً على النسبة المحسوبة.'|arabic_pdf }}</div>
+
+        {% if evaluation.notes %}
+        <table class="section-title-table" dir="rtl">
+          <tr>
+            <td class="section-title-text" colspan="2">{{ 'ملاحظات عامة'|arabic_pdf }}</td>
+          </tr>
+        </table>
+        <table class="section-table" dir="rtl">
+          <tbody>
+            <tr>
+              <td class="multiline-cell">{{ evaluation.notes|arabic_pdf_block }}</td>
+            </tr>
+          </tbody>
+        </table>
+        {% endif %}
 
         <table class="section-title-table" dir="rtl">
           <tr>
