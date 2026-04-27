@@ -281,17 +281,6 @@ class Evaluation(models.Model):
     def establishment_status(self):
         """إرجاع وصف حالة المنشأة بناءً على نسبة الامتثال."""
         pct = Decimal(self.percentage or 0)
-        blocking_codes = self.blocking_risk_non_compliant_codes()
-        if pct >= 41 and blocking_codes:
-            return {
-                'label': 'متابعة مطلوبة',
-                'range': f'{self.percentage}%',
-                'description': 'لا يتم المنح حتى إغلاق البنود عالية الخطورة غير المستوفية: ' + ', '.join(blocking_codes),
-                'color': 'danger',
-                'icon': 'fa-shield-halved',
-                'blocks_grant': True,
-                'blocking_codes': blocking_codes,
-            }
         if pct >= 86:
             return {
                 'label': 'ممتاز',
@@ -329,7 +318,7 @@ class Evaluation(models.Model):
             'color': 'danger',
             'icon': 'fa-circle-xmark',
             'blocks_grant': True,
-            'blocking_codes': blocking_codes,
+            'blocking_codes': [],
         }
 
     def mark_completed(self):

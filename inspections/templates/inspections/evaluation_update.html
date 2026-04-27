@@ -100,13 +100,6 @@
 
 <div id="evaluationContent" class="d-none">
 
-{% if high_risk_non_compliant %}
-<div class="alert alert-danger shadow-sm">
-  توجد بنود عالية الخطورة غير مستوفية: {{ high_risk_non_compliant|join:", " }}.
-  لا يتم المنح حتى إغلاقها، ويتم تحويل القرار إلى متابعة وتصحيح.
-</div>
-{% endif %}
-
 {% if has_evaluation_result %}
 {% with status=evaluation.establishment_status %}
 <div class="alert alert-{{ status.color }} border-0 shadow-sm mb-4 py-3 px-4" style="border-radius: 1rem;">
