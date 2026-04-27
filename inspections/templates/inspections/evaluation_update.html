@@ -247,13 +247,18 @@
               </div>
             </div>
           {% endfor %}
-          <div class="item-row">
-            <label class="form-label fw-bold">ملاحظات عامة</label>
-            {{ meta_form.notes }}
-            {% if meta_form.notes.errors %}<div class="text-danger small">{{ meta_form.notes.errors }}</div>{% endif %}
-          </div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mt-4">
+    <div class="card-header bg-success text-white">
+      <h5 class="mb-0">ملاحظات عامة</h5>
+    </div>
+    <div class="card-body">
+      {{ meta_form.notes }}
+      {% if meta_form.notes.errors %}<div class="text-danger small">{{ meta_form.notes.errors }}</div>{% endif %}
     </div>
   </div>
 
