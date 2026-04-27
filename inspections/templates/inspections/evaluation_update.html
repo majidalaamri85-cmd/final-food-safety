@@ -247,6 +247,11 @@
               </div>
             </div>
           {% endfor %}
+          <div class="item-row">
+            <label class="form-label fw-bold">ملاحظات عامة</label>
+            {{ meta_form.notes }}
+            {% if meta_form.notes.errors %}<div class="text-danger small">{{ meta_form.notes.errors }}</div>{% endif %}
+          </div>
         </div>
       </div>
     </div>

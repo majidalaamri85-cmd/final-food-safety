@@ -120,14 +120,16 @@ class EvaluationHeaderForm(forms.ModelForm):
 
     class Meta:
         model = Evaluation
-        fields = ['establishment', 'visit_date']
+        fields = ['establishment', 'visit_date', 'notes']
         widgets = {
             'establishment': forms.Select(attrs={'class': 'form-select'}),
             'visit_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 4, 'placeholder': 'أدخل الملاحظات العامة للتقييم'}),
         }
         labels = {
             'establishment': 'المنشأة',
             'visit_date': 'تاريخ التقييم',
+            'notes': 'ملاحظات عامة',
         }
 
 
@@ -197,4 +199,3 @@ class CorrectiveActionForm(forms.ModelForm):
             'due_date': 'تاريخ الاستحقاق',
             'status': 'حالة الإجراء',
         }
-
