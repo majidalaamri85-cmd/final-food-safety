@@ -610,7 +610,7 @@ def establishment_create(request):
     form = EstablishmentForm(request.POST or None, request.FILES or None)
     if form.is_valid():
         obj = form.save()
-        messages.success(request, f'تم حفظ المنشأة بنجاح. رقم المنشأة: {obj.establishment_no} | الرقم المرجعي: {obj.reference_no}')
+        messages.success(request, f'تم حفظ المنشأة بنجاح. رقم المنشأة: {obj.establishment_no}')
         return redirect('establishment_list')
     reference_data = _get_reference_data()
     return render(request, 'inspections/establishment_form.html', {
@@ -1009,10 +1009,9 @@ def export_establishments_excel(request):
     wb = Workbook()
     ws = wb.active
     ws.title = 'المنشآت'
-    ws.append(['الرقم المرجعي', 'رقم المنشأة', 'الاسم التجاري', 'النشاط', 'المحافظة', 'الولاية', 'رقم الترخيص', 'السجل التجاري', 'الحالة'])
+    ws.append(['رقم المنشأة', 'الاسم التجاري', 'النشاط', 'المحافظة', 'الولاية', 'رقم الترخيص', 'السجل التجاري', 'الحالة'])
     for e in qs:
         ws.append([
-            e.reference_no,
             e.establishment_no,
             e.commercial_name, e.activity_type, e.governorate.name_ar, e.wilayat.name_ar,
             e.license_no, e.commercial_reg, e.get_status_display()
@@ -1063,7 +1062,7 @@ def export_evaluations_excel(request):
     ws = wb.active
     ws.title = 'تقارير التقييم'
     ws.append([
-        'مرجع التقرير', 'مرجع المنشأة', 'اسم المنشأة', 'المحافظة', 'الولاية', 'رقم الترخيص', 'تاريخ الزيارة',
+        'مرجع التقرير', 'رقم المنشأة', 'اسم المنشأة', 'المحافظة', 'الولاية', 'رقم الترخيص', 'تاريخ الزيارة',
         'المفتش', 'النسبة', 'التصنيف', 'الحالة', 'البنود غير المستوفية',
     ])
 
@@ -1078,7 +1077,7 @@ def export_evaluations_excel(request):
         issues_text = ' | '.join(filter(None, [non_compliant_text, missing_records_text])) or 'لا توجد بنود غير مستوفية'
         ws.append([
             evaluation.report_reference_no,
-            evaluation.establishment.reference_no,
+            evaluation.establishment.establishment_no,
             evaluation.establishment.commercial_name,
             evaluation.establishment.governorate.name_ar,
             evaluation.establishment.wilayat.name_ar,
@@ -1272,7 +1271,7 @@ def _build_evaluation_docx(evaluation):
     info_table.style = 'Table Grid'
     rows = [
         ('مرجع التقرير', evaluation.report_reference_no, 'تاريخ الزيارة', _format_docx_date(evaluation.visit_date)),
-        ('اسم المنشأة', evaluation.establishment.commercial_name, 'رقم المنشأة', evaluation.establishment.reference_no),
+        ('اسم المنشأة', evaluation.establishment.commercial_name, 'رقم المنشأة', evaluation.establishment.establishment_no),
         ('المحافظة', evaluation.establishment.governorate.name_ar, 'الولاية', evaluation.establishment.wilayat.name_ar),
         ('نسبة الامتثال', f'{evaluation.percentage}%', 'التصنيف', evaluation.get_classification_display()),
         ('المفتش / المقيم', evaluation.inspector.get_full_name() or evaluation.inspector.username, 'حالة التقييم', evaluation.get_approval_status_display()),

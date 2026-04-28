@@ -35,7 +35,7 @@ class EstablishmentForm(forms.ModelForm):
     class Meta:
         model = Establishment
         fields = [
-            'establishment_no', 'governorate', 'wilayat', 'commercial_name', 'activity_type', 'license_no',
+            'governorate', 'wilayat', 'commercial_name', 'activity_type', 'license_no',
             'commercial_reg', 'manager_name', 'contact_phone', 'contact_email',
             'employee_count', 'production_capacity', 'product_types',
             'doc_commercial_register', 'doc_municipal_license',

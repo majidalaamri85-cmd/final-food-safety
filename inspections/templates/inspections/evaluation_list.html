@@ -89,7 +89,7 @@
             <td>
               <div class="fw-semibold">{{ e.establishment }}</div>
               <div class="small text-muted"><i class="fa-solid fa-barcode fa-xs me-1"></i>مرجع التقرير: {{ e.report_reference_no }}</div>
-              <div class="small text-muted"><i class="fa-solid fa-fingerprint fa-xs me-1"></i>الهوية الوطنية للمنشأة: {{ e.establishment.reference_no }}</div>
+              <div class="small text-muted"><i class="fa-solid fa-hashtag fa-xs me-1"></i>رقم المنشأة: {{ e.establishment.establishment_no|arabic_digits }}</div>
               <div class="small text-muted"><i class="fa-solid fa-hashtag fa-xs me-1"></i>{{ e.establishment.license_no }}</div>
             </td>
             <td>

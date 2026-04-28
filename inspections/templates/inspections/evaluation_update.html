@@ -64,10 +64,10 @@
     <div class="row g-3 mb-3">
       <div class="col-md-6">
         <label class="form-label">المنشأة</label>
-        <input type="text" id="establishmentLookup" class="form-control" list="establishmentOptions" placeholder="إدخال اسم أو الهوية الوطنية للمنشأة لبدء التقييم">
+        <input type="text" id="establishmentLookup" class="form-control" list="establishmentOptions" placeholder="إدخال اسم أو رقم المنشأة لبدء التقييم">
         <datalist id="establishmentOptions">
           {% for obj in meta_form.fields.establishment.queryset %}
-            <option value="{{ obj.reference_no }} - {{ obj.commercial_name }}"></option>
+            <option value="{{ obj.establishment_no }} - {{ obj.commercial_name }}"></option>
           {% endfor %}
         </datalist>
         <div class="d-none">{{ meta_form.establishment }}</div>
@@ -84,12 +84,12 @@
 </div>
 
 <div id="establishmentHint" class="alert alert-info shadow-sm mb-4">
-  أدخل اسم المنشأة أو الهوية الوطنية للمنشأة ثم اخترها لتظهر أقسام البنود وتبدأ التقييم.
+  أدخل اسم المنشأة أو رقم المنشأة ثم اخترها لتظهر أقسام البنود وتبدأ التقييم.
 </div>
 
 <div id="establishmentDetails" class="alert alert-light shadow-sm mb-3 d-none">
   <div class="row g-2">
-    <div class="col-md-6"><strong>الهوية الوطنية للمنشأة:</strong> <span id="selectedEstablishmentNo">-</span></div>
+    <div class="col-md-6"><strong>رقم المنشأة:</strong> <span id="selectedEstablishmentNo">-</span></div>
     <div class="col-md-6"><strong>اسم المنشأة:</strong> <span id="selectedEstablishmentName">-</span></div>
   </div>
 </div>
