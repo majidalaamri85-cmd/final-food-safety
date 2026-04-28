@@ -19,6 +19,13 @@ from django.template.loader import get_template
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from openpyxl import Workbook
+from docx import Document
+from docx.enum.section import WD_ORIENT
+from docx.enum.table import WD_TABLE_ALIGNMENT, WD_CELL_VERTICAL_ALIGNMENT
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
+from docx.shared import Inches, Pt
 from xhtml2pdf import files as pisa_files
 from xhtml2pdf import pisa
 
@@ -1127,6 +1134,179 @@ def _build_evaluation_report_context(evaluation):
         'signature_rows': signature_rows,
         'non_compliant_total': len(items_list),
     }
+
+
+def _set_docx_rtl(paragraph):
+    paragraph.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    p_pr = paragraph._element.get_or_add_pPr()
+    if p_pr.find(qn('w:bidi')) is None:
+        p_pr.append(OxmlElement('w:bidi'))
+
+
+def _set_cell_text(cell, text, bold=False):
+    cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.TOP
+    cell.text = ''
+    paragraph = cell.paragraphs[0]
+    _set_docx_rtl(paragraph)
+    run = paragraph.add_run(str(text or ''))
+    run.bold = bold
+    run.font.name = 'Tahoma'
+    run._element.rPr.rFonts.set(qn('w:cs'), 'Tahoma')
+    run.font.size = Pt(10)
+
+
+def _add_docx_heading(document, text, level=1):
+    paragraph = document.add_heading('', level=level)
+    _set_docx_rtl(paragraph)
+    run = paragraph.add_run(str(text or ''))
+    run.font.name = 'Tahoma'
+    run._element.rPr.rFonts.set(qn('w:cs'), 'Tahoma')
+    return paragraph
+
+
+def _add_docx_paragraph(document, label, value=''):
+    paragraph = document.add_paragraph()
+    _set_docx_rtl(paragraph)
+    label_run = paragraph.add_run(str(label or ''))
+    label_run.bold = True
+    label_run.font.name = 'Tahoma'
+    label_run._element.rPr.rFonts.set(qn('w:cs'), 'Tahoma')
+    value_run = paragraph.add_run(str(value or ''))
+    value_run.font.name = 'Tahoma'
+    value_run._element.rPr.rFonts.set(qn('w:cs'), 'Tahoma')
+    return paragraph
+
+
+def _format_docx_date(value):
+    if not value:
+        return ''
+    return value.strftime('%Y/%m/%d')
+
+
+def _build_evaluation_docx(evaluation):
+    context = _build_evaluation_report_context(evaluation)
+    grouped_items = context['grouped_items']
+    images_by_criterion = context['images_by_criterion']
+
+    document = Document()
+    section = document.sections[0]
+    section.orientation = WD_ORIENT.LANDSCAPE
+    section.page_width, section.page_height = section.page_height, section.page_width
+    section.top_margin = Inches(0.5)
+    section.bottom_margin = Inches(0.5)
+    section.left_margin = Inches(0.55)
+    section.right_margin = Inches(0.55)
+
+    styles = document.styles
+    styles['Normal'].font.name = 'Tahoma'
+    styles['Normal']._element.rPr.rFonts.set(qn('w:cs'), 'Tahoma')
+    styles['Normal'].font.size = Pt(10)
+
+    _add_docx_heading(document, f'تقرير زيارة ميدانية إلى شركة: {evaluation.establishment.commercial_name}', 1)
+
+    info_table = document.add_table(rows=0, cols=4)
+    info_table.alignment = WD_TABLE_ALIGNMENT.RIGHT
+    info_table.style = 'Table Grid'
+    rows = [
+        ('مرجع التقرير', evaluation.report_reference_no, 'تاريخ الزيارة', _format_docx_date(evaluation.visit_date)),
+        ('اسم المنشأة', evaluation.establishment.commercial_name, 'رقم المنشأة', evaluation.establishment.reference_no),
+        ('المحافظة', evaluation.establishment.governorate.name_ar, 'الولاية', evaluation.establishment.wilayat.name_ar),
+        ('نسبة الامتثال', f'{evaluation.percentage}%', 'التصنيف', evaluation.get_classification_display()),
+        ('المفتش / المقيم', evaluation.inspector.get_full_name() or evaluation.inspector.username, 'حالة التقييم', evaluation.get_approval_status_display()),
+    ]
+    for row_values in rows:
+        cells = info_table.add_row().cells
+        _set_cell_text(cells[0], row_values[0], bold=True)
+        _set_cell_text(cells[1], row_values[1])
+        _set_cell_text(cells[2], row_values[2], bold=True)
+        _set_cell_text(cells[3], row_values[3])
+
+    document.add_paragraph()
+    _add_docx_heading(document, 'البنود غير المستوفية والإجراءات التصحيحية', 2)
+
+    if not grouped_items:
+        _add_docx_paragraph(document, '', 'لا توجد بنود غير مستوفية.')
+    else:
+        for section_obj, items in grouped_items.items():
+            _add_docx_heading(document, f'{section_obj.sort_order} - {section_obj.name_ar}', 3)
+            table = document.add_table(rows=1, cols=5)
+            table.alignment = WD_TABLE_ALIGNMENT.RIGHT
+            table.style = 'Table Grid'
+            headers = ['البند', 'نص البند غير المستوفي', 'الملاحظات', 'الإجراء التصحيحي', 'الصور']
+            for index, header in enumerate(headers):
+                _set_cell_text(table.rows[0].cells[index], header, bold=True)
+
+            for item in items:
+                cells = table.add_row().cells
+                _set_cell_text(cells[0], item.criterion.code)
+                _set_cell_text(cells[1], item.criterion.text_ar)
+                _set_cell_text(cells[2], item.remarks or '-')
+                _set_cell_text(cells[3], item.corrective_action or '-')
+                image_cell = cells[4]
+                image_cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.TOP
+                image_cell.text = ''
+                images = images_by_criterion.get(item.criterion_id, [])
+                if images:
+                    for image in images:
+                        paragraph = image_cell.add_paragraph()
+                        _set_docx_rtl(paragraph)
+                        image_path = getattr(image.image, 'path', '')
+                        if image_path and os.path.exists(image_path):
+                            try:
+                                paragraph.add_run().add_picture(image_path, width=Inches(1.55))
+                            except Exception:
+                                paragraph.add_run('تعذر إدراج الصورة')
+                        else:
+                            paragraph.add_run('الصورة غير متوفرة')
+                        if image.caption:
+                            caption = image_cell.add_paragraph()
+                            _set_docx_rtl(caption)
+                            caption.add_run(image.caption)
+                else:
+                    _set_cell_text(image_cell, '-')
+
+    if (evaluation.corrective_action or '').strip():
+        _add_docx_heading(document, 'الإجراءات التصحيحية العامة', 2)
+        _add_docx_paragraph(document, '', evaluation.corrective_action)
+
+    if context['signature_rows']:
+        _add_docx_heading(document, 'فريق التقييم والاعتماد', 2)
+        sign_table = document.add_table(rows=1, cols=3)
+        sign_table.alignment = WD_TABLE_ALIGNMENT.RIGHT
+        sign_table.style = 'Table Grid'
+        for index, header in enumerate(['الاسم', 'المسمى الوظيفي', 'التوقيع']):
+            _set_cell_text(sign_table.rows[0].cells[index], header, bold=True)
+        for signature in context['signature_rows']:
+            cells = sign_table.add_row().cells
+            _set_cell_text(cells[0], signature['name'])
+            _set_cell_text(cells[1], signature['job_title'])
+            _set_cell_text(cells[2], '')
+
+    output = BytesIO()
+    document.save(output)
+    output.seek(0)
+    return output
+
+
+@login_required
+def evaluation_word(request, pk):
+    evaluation = get_object_or_404(
+        Evaluation.objects.select_related(
+            'establishment',
+            'establishment__governorate',
+            'establishment__wilayat',
+            'inspector',
+            'reviewer',
+        ).prefetch_related('team_members'),
+        pk=pk,
+    )
+    docx_file = _build_evaluation_docx(evaluation)
+    response = HttpResponse(
+        docx_file.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    )
+    response['Content-Disposition'] = f'attachment; filename="official_evaluation_{evaluation.id}.docx"'
+    return response
 
 
 PDF_CACHE_TIMEOUT = 60 * 10  # 10 دقائق

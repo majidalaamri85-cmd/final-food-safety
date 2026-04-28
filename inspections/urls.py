@@ -15,6 +15,7 @@ urlpatterns = [
     path('evaluations/<int:pk>/edit/', views.evaluation_update, name='evaluation_update'),
     path('evaluations/<int:pk>/submit/', views.evaluation_submit, name='evaluation_submit'),
     path('evaluations/<int:pk>/pdf/', views.evaluation_pdf, name='evaluation_pdf'),
+    path('evaluations/<int:pk>/word/', views.evaluation_word, name='evaluation_word'),
     path('corrective-actions/', views.corrective_action_list, name='corrective_action_list'),
     path('corrective-actions/new/', views.corrective_action_create, name='corrective_action_create'),
     path('corrective-actions/<int:pk>/edit/', views.corrective_action_update, name='corrective_action_update'),

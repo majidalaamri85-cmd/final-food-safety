@@ -108,6 +108,7 @@
               <div class="d-flex gap-1 justify-content-center flex-wrap">
                 <a class="btn btn-sm btn-outline-success" href="/evaluations/{{ e.id }}/edit/" title="فتح التقييم"><i class="fa-solid fa-pen-to-square"></i><span class="d-none d-md-inline ms-1">تعديل</span></a>
                 <a class="btn btn-sm btn-outline-danger" href="/evaluations/{{ e.id }}/pdf/" target="_blank" title="تقرير PDF"><i class="fa-solid fa-file-pdf"></i><span class="d-none d-md-inline ms-1">PDF</span></a>
+                <a class="btn btn-sm btn-outline-primary" href="/evaluations/{{ e.id }}/word/" title="تنزيل Word"><i class="fa-solid fa-file-word"></i><span class="d-none d-md-inline ms-1">Word</span></a>
                 {% if e.approval_status == 'draft' %}
                   <a class="btn btn-sm btn-outline-primary" href="/evaluations/{{ e.id }}/submit/" title="إنهاء التقييم"><i class="fa-solid fa-check"></i><span class="d-none d-md-inline ms-1">إنهاء</span></a>
                 {% endif %}
