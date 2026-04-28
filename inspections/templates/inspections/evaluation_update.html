@@ -503,20 +503,14 @@
     lookupInput.addEventListener('blur', syncSelectionFromLookup);
     lookupInput.addEventListener('input', syncOnInput);
     establishmentSelect.addEventListener('change', function() {
-      evaluationStarted = hasEvaluationResult;
+      evaluationStarted = true;
       toggleEvaluationVisibility();
     });
 
+    // إخفاء زر بدء التقييم تلقائيًا
     const startButton = document.getElementById('startEvaluationBtn');
     if (startButton) {
-      startButton.addEventListener('click', function() {
-        evaluationStarted = true;
-        toggleEvaluationVisibility();
-        const content = document.getElementById('evaluationContent');
-        if (content && !content.classList.contains('d-none')) {
-          content.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      });
+      startButton.style.display = 'none';
     }
   })();
 
