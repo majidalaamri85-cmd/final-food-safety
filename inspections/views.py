@@ -818,12 +818,13 @@ def evaluation_update(request, pk):
                 # تمرير البيانات الموجودة في الذاكرة لتجنب استعلامات DB إضافية
                 _sync_corrective_actions_for_evaluation(evaluation, request.user, pre_loaded_items=all_items)
                 evaluation.calculate_results(items=all_items, record_checks=all_records)
-                evaluation.save(update_fields=['total_points', 'percentage', 'classification'])
-                EvaluationActivityLog.objects.create(evaluation=evaluation, user=request.user, action='حفظ التقييم', notes='تم حفظ بنود التقييم.')
+                evaluation.approval_status = 'completed'
+                evaluation.save(update_fields=['total_points', 'percentage', 'classification', 'approval_status'])
+                EvaluationActivityLog.objects.create(evaluation=evaluation, user=request.user, action='إنهاء التقييم', notes='تم حفظ بنود التقييم وإنهاء التقييم.')
 
             # مسح كاش PDF بعد الحفظ حتى لا يُعرض تقرير قديم
             cache.delete(f'pdf_bytes:eval:{evaluation.pk}')
-            messages.success(request, f'تم حفظ التقييم بنجاح. النسبة: {evaluation.percentage}% - التصنيف: {evaluation.get_classification_display()}')
+            messages.success(request, f'تم حفظ وإنهاء التقييم بنجاح. النسبة: {evaluation.percentage}% - التصنيف: {evaluation.get_classification_display()}')
             return redirect('evaluation_update', pk=evaluation.pk)
     else:
         formset = EvaluationItemFormSet(queryset=queryset)

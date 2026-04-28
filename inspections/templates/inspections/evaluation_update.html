@@ -331,11 +331,6 @@
   <button type="submit" form="evaluationForm" class="btn btn-success">
     <i class="fa-solid fa-floppy-disk me-1"></i>حفظ
   </button>
-  {% if evaluation.approval_status == 'draft' %}
-    <a href="{% url 'evaluation_submit' evaluation.pk %}" class="btn btn-outline-primary">
-      <i class="fa-solid fa-circle-check me-1"></i>إنهاء التقييم
-    </a>
-  {% endif %}
   <a href="{% url 'evaluation_pdf' evaluation.pk %}" class="btn btn-danger" target="_blank">
     <i class="fa-solid fa-file-pdf me-1"></i>PDF
   </a>
