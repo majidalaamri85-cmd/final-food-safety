@@ -37,6 +37,7 @@ from .forms import (
     EvaluationItemForm,
     EvaluationRecordCheckForm,
     EvaluationTeamMemberForm,
+    QualificationFollowUpForm,
 )
 from .models import (
     CorrectiveActionLog,
@@ -50,6 +51,7 @@ from .models import (
     EvaluationSection,
     EvaluationTeamMember,
     Governorate,
+    QualificationFollowUp,
     RequiredRecord,
     UserProfile,
     Wilayat,
@@ -386,6 +388,86 @@ def conformity_assessment_bodies_assignment(request):
         'minimal_nav': True,
     }
     return render(request, 'inspections/module_placeholder.html', context)
+
+
+@login_required
+def qualification_followup_list(request):
+    qs = QualificationFollowUp.objects.select_related('establishment').all()
+
+    q = request.GET.get('q', '').strip()
+    governorate = request.GET.get('governorate', '').strip()
+    status = request.GET.get('status', '').strip()
+    activity = request.GET.get('activity', '').strip()
+
+    if q:
+        normalized_q = _normalize_digit_text(q)
+        filters = (
+            Q(establishment_name__icontains=q) |
+            Q(activity_type__icontains=q) |
+            Q(governorate__icontains=q) |
+            Q(establishment__license_no__icontains=q)
+        )
+        if normalized_q.isdigit():
+            filters |= Q(establishment__establishment_no=int(normalized_q))
+        qs = qs.filter(filters)
+    if governorate:
+        qs = qs.filter(governorate=governorate)
+    if status:
+        qs = qs.filter(current_status=status)
+    if activity:
+        qs = qs.filter(activity_type=activity)
+
+    if request.method == 'POST':
+        form = QualificationFollowUpForm(request.POST)
+        if form.is_valid():
+            obj = form.save()
+            messages.success(request, f'تم حفظ متابعة التأهيل للمنشأة: {obj.establishment_name}')
+            return redirect('qualification_followup_list')
+    else:
+        form = QualificationFollowUpForm()
+
+    today = timezone.localdate()
+    stats = qs.aggregate(total=Count('id'), avg_progress=Avg('progress_percent'))
+    total_count = stats['total'] or 0
+    completed_count = qs.filter(current_status='completed').count()
+    in_progress_count = qs.filter(current_status='in_progress').count()
+    stalled_count = qs.filter(current_status='stalled').count()
+    overdue_count = qs.filter(expected_completion_date__lt=today).exclude(current_status='completed').count()
+    avg_progress = round(stats['avg_progress'] or 0, 1)
+
+    paginator = Paginator(qs, PAGE_SIZE)
+    page_obj = paginator.get_page(request.GET.get('page'))
+    reference_data = _get_reference_data()
+    activity_options = (
+        QualificationFollowUp.objects
+        .exclude(activity_type='')
+        .order_by('activity_type')
+        .values_list('activity_type', flat=True)
+        .distinct()
+    )
+    establishment_options = Establishment.objects.select_related('governorate').only(
+        'id', 'establishment_no', 'commercial_name', 'activity_type', 'governorate__name_ar'
+    ).order_by('establishment_no', 'commercial_name')
+
+    return render(request, 'inspections/qualification_followup_list.html', {
+        'form': form,
+        'items': page_obj,
+        'page_obj': page_obj,
+        'q': q,
+        'governorates': reference_data['governorates'],
+        'selected_governorate': governorate,
+        'selected_status': status,
+        'selected_activity': activity,
+        'status_choices': QualificationFollowUp.STATUS_CHOICES,
+        'activity_options': activity_options,
+        'total_count': total_count,
+        'completed_count': completed_count,
+        'in_progress_count': in_progress_count,
+        'stalled_count': stalled_count,
+        'overdue_count': overdue_count,
+        'avg_progress': avg_progress,
+        'establishment_options': establishment_options,
+    })
 
 
 @login_required
@@ -1018,6 +1100,69 @@ def export_establishments_excel(request):
         ])
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = 'attachment; filename="establishments.xlsx"'
+    wb.save(response)
+    return response
+
+
+@login_required
+def export_qualification_followups_excel(request):
+    qs = QualificationFollowUp.objects.select_related('establishment').all()
+
+    q = request.GET.get('q', '').strip()
+    governorate = request.GET.get('governorate', '').strip()
+    status = request.GET.get('status', '').strip()
+    activity = request.GET.get('activity', '').strip()
+    if q:
+        normalized_q = _normalize_digit_text(q)
+        filters = (
+            Q(establishment_name__icontains=q) |
+            Q(activity_type__icontains=q) |
+            Q(governorate__icontains=q) |
+            Q(establishment__license_no__icontains=q)
+        )
+        if normalized_q.isdigit():
+            filters |= Q(establishment__establishment_no=int(normalized_q))
+        qs = qs.filter(filters)
+    if governorate:
+        qs = qs.filter(governorate=governorate)
+    if status:
+        qs = qs.filter(current_status=status)
+    if activity:
+        qs = qs.filter(activity_type=activity)
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = 'متابعة التأهيل'
+    ws.append([
+        'م', 'المحافظة', 'اسم المنشأة', 'نوع النشاط', 'الحالة الحالية',
+        'أنظمة الجودة وسلامة الغذاء', 'تاريخ البدء', 'تاريخ الإنجاز المتوقع',
+        'نسبة الإنجاز (%)', 'التحديات', 'ملاحظات', 'رقم المنشأة المرجعي',
+        'رقم الزيارة المرجعي', 'سنة الزيارة', 'رقم الزيارة لنفس المنشأة',
+        'رمز المحافظة', 'رمز النشاط', 'مفتاح الربط Django',
+    ])
+    for index, item in enumerate(qs, start=1):
+        ws.append([
+            index,
+            item.governorate,
+            item.establishment_name,
+            item.activity_type,
+            item.get_current_status_display(),
+            item.custom_quality_system or item.quality_system,
+            item.start_date,
+            item.expected_completion_date,
+            item.progress_percent,
+            item.challenges,
+            item.notes,
+            item.facility_reference_code,
+            item.visit_reference_code,
+            item.visit_year,
+            item.visit_no,
+            item.governorate_code,
+            item.activity_code,
+            item.django_link_key,
+        ])
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="qualification_followups.xlsx"'
     wb.save(response)
     return response
 

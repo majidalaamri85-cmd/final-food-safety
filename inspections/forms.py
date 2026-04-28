@@ -8,6 +8,7 @@ from .models import (
     EvaluationItem,
     EvaluationRecordCheck,
     EvaluationTeamMember,
+    QualificationFollowUp,
     Wilayat,
 )
 
@@ -198,4 +199,53 @@ class CorrectiveActionForm(forms.ModelForm):
             'assigned_to': 'مكلّف بالتنفيذ',
             'due_date': 'تاريخ الاستحقاق',
             'status': 'حالة الإجراء',
+        }
+
+
+class QualificationFollowUpForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['establishment'].queryset = (
+            Establishment.objects
+            .select_related('governorate')
+            .only('id', 'establishment_no', 'commercial_name', 'activity_type', 'governorate__name_ar')
+            .order_by('establishment_no', 'commercial_name')
+        )
+        self.fields['establishment'].label_from_instance = lambda obj: f'{obj.establishment_no} - {obj.commercial_name}'
+
+    class Meta:
+        model = QualificationFollowUp
+        fields = [
+            'establishment', 'governorate', 'establishment_name', 'activity_type',
+            'current_status', 'quality_system', 'custom_quality_system',
+            'start_date', 'expected_completion_date', 'progress_percent',
+            'challenges', 'notes',
+        ]
+        widgets = {
+            'establishment': forms.Select(attrs={'class': 'form-select', 'data-autofill': 'qualification-establishment'}),
+            'governorate': forms.TextInput(attrs={'class': 'form-control', 'list': 'governorate-options'}),
+            'establishment_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'activity_type': forms.TextInput(attrs={'class': 'form-control', 'list': 'qualification-activity-options'}),
+            'current_status': forms.Select(attrs={'class': 'form-select'}),
+            'quality_system': forms.Select(attrs={'class': 'form-select'}),
+            'custom_quality_system': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'اكتب النظام إذا اخترت أخرى'}),
+            'start_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'expected_completion_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'progress_percent': forms.NumberInput(attrs={'class': 'form-control', 'min': '0', 'max': '100'}),
+            'challenges': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+        }
+        labels = {
+            'establishment': 'المنشأة المسجلة',
+            'governorate': 'المحافظة',
+            'establishment_name': 'اسم المنشأة',
+            'activity_type': 'نوع النشاط',
+            'current_status': 'الحالة الحالية',
+            'quality_system': 'أنظمة الجودة وسلامة الغذاء',
+            'custom_quality_system': 'نظام جودة آخر',
+            'start_date': 'تاريخ البدء',
+            'expected_completion_date': 'تاريخ الإنجاز المتوقع',
+            'progress_percent': 'نسبة الإنجاز (%)',
+            'challenges': 'التحديات',
+            'notes': 'ملاحظات',
         }

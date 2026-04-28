@@ -1,0 +1,260 @@
+{% extends 'base.html' %}
+{% load inspection_extras %}
+{% block title %}متابعة تأهيل المنشآت{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item active" aria-current="page">متابعة تأهيل المنشآت</li>{% endblock %}
+{% block content %}
+
+<div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+  <div>
+    <h1><i class="fa-solid fa-chart-line text-success me-2"></i>متابعة تأهيل المنشآت</h1>
+    <div class="sub">متابعة حالة التأهيل، أنظمة الجودة، التقدم، والتحديات حسب المنشأة والمحافظة.</div>
+  </div>
+  <a class="btn btn-outline-success px-4" href="{% url 'export_qualification_followups_excel' %}?{{ request.GET.urlencode }}">
+    <i class="fa-solid fa-file-excel me-1"></i>تصدير Excel
+  </a>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-6 col-md">
+    <div class="kpi-card kpi-blue"><div class="kpi-value">{{ total_count|arabic_digits }}</div><div class="kpi-label">إجمالي المتابعة</div></div>
+  </div>
+  <div class="col-6 col-md">
+    <div class="kpi-card kpi-green"><div class="kpi-value">{{ completed_count|arabic_digits }}</div><div class="kpi-label">مكتمل</div></div>
+  </div>
+  <div class="col-6 col-md">
+    <div class="kpi-card kpi-teal"><div class="kpi-value">{{ in_progress_count|arabic_digits }}</div><div class="kpi-label">قيد التنفيذ</div></div>
+  </div>
+  <div class="col-6 col-md">
+    <div class="kpi-card kpi-red"><div class="kpi-value">{{ stalled_count|arabic_digits }}</div><div class="kpi-label">متعثر</div></div>
+  </div>
+  <div class="col-6 col-md">
+    <div class="kpi-card kpi-orange"><div class="kpi-value">{{ avg_progress|arabic_digits }}%</div><div class="kpi-label">متوسط الإنجاز</div></div>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-header bg-success text-white">
+    <i class="fa-solid fa-plus me-1"></i>إضافة متابعة تأهيل
+  </div>
+  <div class="card-body">
+    <datalist id="governorate-options">
+      {% for governorate in governorates %}
+        <option value="{{ governorate.name_ar }}"></option>
+      {% endfor %}
+    </datalist>
+    <datalist id="qualification-activity-options">
+      {% for activity in activity_options %}
+        <option value="{{ activity }}"></option>
+      {% endfor %}
+      <option value="مصنع مياه"></option>
+      <option value="تجهيز وتجميد الأسماك"></option>
+      <option value="العصائر"></option>
+      <option value="الألبان"></option>
+      <option value="الخضروات والفواكه"></option>
+      <option value="اللحوم والدواجن"></option>
+      <option value="منتجات الحبوب"></option>
+      <option value="الزيوت"></option>
+    </datalist>
+
+    <form method="post">
+      {% csrf_token %}
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label">{{ form.establishment.label }}</label>
+          {{ form.establishment }}
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">{{ form.governorate.label }}</label>
+          {{ form.governorate }}
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">{{ form.establishment_name.label }}</label>
+          {{ form.establishment_name }}
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">{{ form.activity_type.label }}</label>
+          {{ form.activity_type }}
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">{{ form.current_status.label }}</label>
+          {{ form.current_status }}
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">{{ form.quality_system.label }}</label>
+          {{ form.quality_system }}
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">{{ form.custom_quality_system.label }}</label>
+          {{ form.custom_quality_system }}
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">{{ form.start_date.label }}</label>
+          {{ form.start_date }}
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">{{ form.expected_completion_date.label }}</label>
+          {{ form.expected_completion_date }}
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">{{ form.progress_percent.label }}</label>
+          {{ form.progress_percent }}
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">{{ form.challenges.label }}</label>
+          {{ form.challenges }}
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">{{ form.notes.label }}</label>
+          {{ form.notes }}
+        </div>
+      </div>
+      {% if form.errors %}
+        <div class="alert alert-danger mt-3 mb-0">{{ form.errors }}</div>
+      {% endif %}
+      <div class="mt-3">
+        <button type="submit" class="btn btn-success px-4"><i class="fa-solid fa-floppy-disk me-1"></i>حفظ المتابعة</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<form class="card mb-3">
+  <div class="card-body">
+    <div class="row g-3 align-items-end">
+      <div class="col-md-3">
+        <label class="form-label"><i class="fa-solid fa-magnifying-glass me-1"></i>بحث</label>
+        <input class="form-control" name="q" value="{{ q }}" placeholder="رقم المنشأة أو الاسم أو النشاط">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">المحافظة</label>
+        <select name="governorate" class="form-select">
+          <option value="">كل المحافظات</option>
+          {% for governorate in governorates %}
+            <option value="{{ governorate.name_ar }}" {% if selected_governorate == governorate.name_ar %}selected{% endif %}>{{ governorate.name_ar }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">الحالة</label>
+        <select name="status" class="form-select">
+          <option value="">كل الحالات</option>
+          {% for value, label in status_choices %}
+            <option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">النشاط</label>
+        <select name="activity" class="form-select">
+          <option value="">كل الأنشطة</option>
+          {% for activity in activity_options %}
+            <option value="{{ activity }}" {% if selected_activity == activity %}selected{% endif %}>{{ activity }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2 d-flex gap-2">
+        <button class="btn btn-success flex-grow-1" type="submit"><i class="fa-solid fa-filter me-1"></i>تطبيق</button>
+        <a class="btn btn-outline-secondary" href="{% url 'qualification_followup_list' %}" title="إعادة تعيين"><i class="fa-solid fa-rotate-right"></i></a>
+      </div>
+    </div>
+  </div>
+</form>
+
+<div class="card">
+  <div class="card-body p-0">
+    <div class="table-responsive mobile-table-wrap">
+      <table class="table table-hover mb-0 align-middle">
+        <thead>
+          <tr>
+            <th>المنشأة</th>
+            <th>المحافظة</th>
+            <th>الحالة</th>
+            <th>نظام الجودة</th>
+            <th>الإنجاز</th>
+            <th>التواريخ</th>
+            <th>مراجع الربط</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in items %}
+          <tr>
+            <td>
+              <div class="fw-semibold">{{ item.establishment_name }}</div>
+              <div class="small text-muted">{{ item.activity_type }}</div>
+              {% if item.establishment %}<div class="small text-muted">رقم المنشأة: {{ item.establishment.establishment_no|arabic_digits }}</div>{% endif %}
+            </td>
+            <td>{{ item.governorate }}</td>
+            <td>
+              {% if item.current_status == 'completed' %}<span class="status-active">{{ item.get_current_status_display }}</span>
+              {% elif item.current_status == 'in_progress' %}<span class="badge rounded-pill bg-info-subtle text-info border">{{ item.get_current_status_display }}</span>
+              {% elif item.current_status == 'stalled' %}<span class="status-closed">{{ item.get_current_status_display }}</span>
+              {% else %}<span class="status-suspended">{{ item.get_current_status_display }}</span>{% endif %}
+              {% if item.is_overdue %}<div class="small text-danger mt-1">متأخر</div>{% endif %}
+            </td>
+            <td>{{ item.custom_quality_system|default:item.quality_system|default:"-" }}</td>
+            <td style="min-width:130px;">
+              <div class="d-flex justify-content-between small mb-1"><span>{{ item.progress_percent|arabic_digits }}%</span></div>
+              <div class="progress" style="height: 8px;">
+                <div class="progress-bar bg-success" style="width: {{ item.progress_percent }}%"></div>
+              </div>
+            </td>
+            <td>
+              <div class="small">البدء: {{ item.start_date|date:"Y/m/d"|default:"-"|arabic_digits }}</div>
+              <div class="small">المتوقع: {{ item.expected_completion_date|date:"Y/m/d"|default:"-"|arabic_digits }}</div>
+            </td>
+            <td>
+              <div class="small text-muted">{{ item.facility_reference_code }}</div>
+              <div class="small text-muted">{{ item.visit_reference_code }}</div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="7" class="text-center p-5 text-muted">
+            <i class="fa-regular fa-folder-open fa-2x mb-2 d-block"></i>لا توجد سجلات متابعة تأهيل
+          </td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% if page_obj.paginator.num_pages > 1 %}
+<nav class="mt-3">
+  <ul class="pagination justify-content-center">
+    {% if page_obj.has_previous %}
+      <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&q={{ q }}&governorate={{ selected_governorate }}&status={{ selected_status }}&activity={{ selected_activity }}">السابق</a></li>
+    {% endif %}
+    <li class="page-item active"><span class="page-link">{{ page_obj.number|arabic_digits }} / {{ page_obj.paginator.num_pages|arabic_digits }}</span></li>
+    {% if page_obj.has_next %}
+      <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&q={{ q }}&governorate={{ selected_governorate }}&status={{ selected_status }}&activity={{ selected_activity }}">التالي</a></li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %}
+
+<script>
+  const establishmentData = {
+    {% for obj in establishment_options %}
+      "{{ obj.id }}": {
+        "name": "{{ obj.commercial_name|escapejs }}",
+        "activity": "{{ obj.activity_type|escapejs }}",
+        "governorate": "{{ obj.governorate.name_ar|escapejs }}"
+      }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  };
+  const establishmentSelect = document.getElementById('id_establishment');
+  if (establishmentSelect) {
+    establishmentSelect.addEventListener('change', function() {
+      const row = establishmentData[this.value];
+      if (!row) return;
+      const nameInput = document.getElementById('id_establishment_name');
+      const activityInput = document.getElementById('id_activity_type');
+      const governorateInput = document.getElementById('id_governorate');
+      if (nameInput && !nameInput.value) nameInput.value = row.name;
+      if (activityInput && !activityInput.value) activityInput.value = row.activity;
+      if (governorateInput && !governorateInput.value) governorateInput.value = row.governorate;
+    });
+  }
+</script>
+
+{% endblock %}

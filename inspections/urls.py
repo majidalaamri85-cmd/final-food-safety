@@ -8,6 +8,7 @@ urlpatterns = [
     path('dashboard/', views.dashboard, name='dashboard'),
     path('external-establishments-approval/', views.external_establishments_approval, name='external_establishments_approval'),
     path('conformity-assessment-bodies-assignment/', views.conformity_assessment_bodies_assignment, name='conformity_assessment_bodies_assignment'),
+    path('qualification-followups/', views.qualification_followup_list, name='qualification_followup_list'),
     path('establishments/', views.establishment_list, name='establishment_list'),
     path('establishments/new/', views.establishment_create, name='establishment_create'),
     path('evaluations/', views.evaluation_list, name='evaluation_list'),
@@ -20,5 +21,6 @@ urlpatterns = [
     path('corrective-actions/new/', views.corrective_action_create, name='corrective_action_create'),
     path('corrective-actions/<int:pk>/edit/', views.corrective_action_update, name='corrective_action_update'),
     path('exports/establishments.xlsx', views.export_establishments_excel, name='export_establishments_excel'),
+    path('exports/qualification-followups.xlsx', views.export_qualification_followups_excel, name='export_qualification_followups_excel'),
     path('exports/evaluations.xlsx', views.export_evaluations_excel, name='export_evaluations_excel'),
 ]

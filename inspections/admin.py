@@ -10,6 +10,7 @@ from .models import (
     EvaluationRecordCheck,
     EvaluationSection,
     Governorate,
+    QualificationFollowUp,
     RequiredRecord,
     UserProfile,
     Wilayat,
@@ -54,3 +55,10 @@ admin.site.register(EvaluationImage)
 admin.site.register(CorrectiveActionLog)
 admin.site.register(EvaluationActivityLog)
 admin.site.register(UserProfile)
+
+
+@admin.register(QualificationFollowUp)
+class QualificationFollowUpAdmin(admin.ModelAdmin):
+    list_display = ('establishment_name', 'governorate', 'activity_type', 'current_status', 'progress_percent', 'expected_completion_date')
+    list_filter = ('current_status', 'governorate', 'quality_system')
+    search_fields = ('establishment_name', 'activity_type', 'establishment__establishment_no', 'establishment__license_no')

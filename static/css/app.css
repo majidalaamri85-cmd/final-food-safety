@@ -273,10 +273,12 @@ a:hover { color: var(--primary-dark); }
 .module-card-primary .module-card-icon { background: #dff4eb; color: #27866b; }
 .module-card-secondary .module-card-icon { background: #eef3ff; color: #3558d5; }
 .module-card-accent .module-card-icon { background: #fff1df; color: #c26a09; }
+.module-card-followup .module-card-icon { background: #e0f7fa; color: #00838f; }
 
 .module-card-primary:hover { border-color: #b7e0d1; }
 .module-card-secondary:hover { border-color: #c6d4fb; }
 .module-card-accent:hover { border-color: #f2ce9d; }
+.module-card-followup:hover { border-color: #9de2e8; }
 
 /* ===================== MODULE PLACEHOLDER ===================== */
 .placeholder-wrap {

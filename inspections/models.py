@@ -327,6 +327,156 @@ class Evaluation(models.Model):
         self.save()
 
 
+class QualificationFollowUp(models.Model):
+    STATUS_CHOICES = [
+        ('not_started', 'لم يبدأ'),
+        ('in_progress', 'قيد التنفيذ'),
+        ('completed', 'مكتمل'),
+        ('stalled', 'متعثر'),
+    ]
+
+    QUALITY_SYSTEM_CHOICES = [
+        ('ISO 22000', 'ISO 22000'),
+        ('ISO 9001', 'ISO 9001'),
+        ('HACCP', 'HACCP'),
+        ('GMP', 'GMP'),
+        ('Halal', 'Halal'),
+        ('Organic', 'Organic'),
+        ('G.A.P', 'G.A.P'),
+        ('Others', 'أخرى'),
+    ]
+
+    establishment = models.ForeignKey(
+        Establishment,
+        verbose_name='المنشأة المسجلة',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='qualification_followups',
+    )
+    governorate = models.CharField('المحافظة', max_length=150)
+    establishment_name = models.CharField('اسم المنشأة', max_length=255)
+    activity_type = models.CharField('نوع النشاط', max_length=255)
+    current_status = models.CharField('الحالة الحالية', max_length=20, choices=STATUS_CHOICES, default='not_started')
+    quality_system = models.CharField('أنظمة الجودة وسلامة الغذاء', max_length=100, choices=QUALITY_SYSTEM_CHOICES, blank=True)
+    custom_quality_system = models.CharField('نظام جودة آخر', max_length=150, blank=True)
+    start_date = models.DateField('تاريخ البدء', null=True, blank=True)
+    expected_completion_date = models.DateField('تاريخ الإنجاز المتوقع', null=True, blank=True)
+    progress_percent = models.PositiveSmallIntegerField('نسبة الإنجاز (%)', default=0)
+    challenges = models.TextField('التحديات', blank=True)
+    notes = models.TextField('ملاحظات', blank=True)
+    created_at = models.DateTimeField('تاريخ الإنشاء', auto_now_add=True)
+    updated_at = models.DateTimeField('تاريخ التحديث', auto_now=True)
+
+    class Meta:
+        ordering = ['-updated_at', '-id']
+        verbose_name = 'متابعة تأهيل منشأة'
+        verbose_name_plural = 'متابعة تأهيل المنشآت'
+        indexes = [
+            models.Index(fields=['governorate'], name='qual_follow_gov_idx'),
+            models.Index(fields=['current_status'], name='qual_follow_status_idx'),
+            models.Index(fields=['expected_completion_date'], name='qual_follow_due_idx'),
+        ]
+
+    def __str__(self):
+        return f'{self.establishment_name} - {self.get_current_status_display()}'
+
+    @property
+    def governorate_code(self):
+        mapping = {
+            'مسقط': 'MA',
+            'ظفار': 'ZU',
+            'مسندم': 'MU',
+            'البريمي': 'BU',
+            'الداخلية': 'DA',
+            'شمال الباطنة': 'NB',
+            'جنوب الباطنة': 'SB',
+            'شمال الشرقية': 'NS',
+            'جنوب الشرقية': 'SS',
+            'الظاهرة': 'DH',
+            'الوسطى': 'WU',
+        }
+        return mapping.get((self.governorate or '').strip(), 'NA')
+
+    @property
+    def activity_code(self):
+        text = (self.activity_type or '').strip()
+        mapping = {
+            'مصنع مياه': 'WTR',
+            'تجهيز وتجميد الأسماك': 'FSH',
+            'مسحوق وزيت السمك وتكرير الزيت': 'FSH',
+            'سفن الصيد': 'FSH',
+            'القيمة المضافة': 'VAD',
+            'الاستزراع السمكي': 'AQU',
+            'مزارع الروبيان': 'SHR',
+            'الالبان': 'DRY',
+            'الألبان': 'DRY',
+            'الخضروات الفواكة': 'FVG',
+            'الخضروات والفواكه': 'FVG',
+            'العصائر': 'JUC',
+            'عصائر': 'JUC',
+            'اللحوم والدواجن': 'MET',
+            'مشروبات الغازية': 'BEV',
+            'مشروبات غازية': 'BEV',
+            'منتجات الحبوب': 'GRN',
+            'الزيوت': 'OIL',
+        }
+        return mapping.get(text, 'GEN')
+
+    @property
+    def facility_reference_code(self):
+        serial = self.establishment.establishment_no if self.establishment_id else (self.pk or 0)
+        return f'FSQ-OM-{self.governorate_code}-{self.activity_code}-{serial:04d}'
+
+    @property
+    def visit_year(self):
+        date_value = self.start_date or self.created_at or timezone.now()
+        return date_value.year
+
+    @property
+    def visit_no(self):
+        if not self.pk:
+            return 1
+        return (
+            QualificationFollowUp.objects
+            .filter(establishment=self.establishment)
+            .filter(pk__lte=self.pk)
+            .count()
+            if self.establishment_id
+            else 1
+        )
+
+    @property
+    def visit_reference_code(self):
+        return f'{self.facility_reference_code}-{self.visit_year}-{self.visit_no:03d}'
+
+    @property
+    def django_link_key(self):
+        return self.visit_reference_code
+
+    @property
+    def is_overdue(self):
+        return (
+            self.expected_completion_date
+            and self.expected_completion_date < timezone.localdate()
+            and self.current_status != 'completed'
+        )
+
+    def save(self, *args, **kwargs):
+        if self.establishment_id:
+            self.establishment_name = self.establishment_name or self.establishment.commercial_name
+            self.activity_type = self.activity_type or self.establishment.activity_type
+            self.governorate = self.governorate or self.establishment.governorate.name_ar
+        if self.current_status == 'completed':
+            self.progress_percent = 100
+        elif self.current_status == 'in_progress' and not self.progress_percent:
+            self.progress_percent = 50
+        elif self.current_status in {'not_started', 'stalled'}:
+            self.progress_percent = 0
+        self.progress_percent = max(0, min(int(self.progress_percent or 0), 100))
+        super().save(*args, **kwargs)
+
+
 class EvaluationTeamMember(models.Model):
     evaluation = models.ForeignKey(Evaluation, verbose_name='التقييم', on_delete=models.CASCADE, related_name='team_members')
     full_name = models.CharField('الاسم', max_length=255)
