@@ -327,11 +327,11 @@
 </form>
 
 <!-- شريط الحفظ الثابت في الأسفل -->
-<div class="eval-save-bar d-flex gap-2 align-items-center">
+<div id="evalSaveBar" class="eval-save-bar d-flex gap-2 align-items-center d-none">
   <button type="submit" form="evaluationForm" class="btn btn-success">
     <i class="fa-solid fa-floppy-disk me-1"></i>حفظ وإنهاء التقييم
   </button>
-  <a href="{% url 'evaluation_pdf' evaluation.pk %}" class="btn btn-danger" target="_blank">
+  <a id="evaluationPdfLink" href="{% url 'evaluation_pdf' evaluation.pk %}" class="btn btn-danger {% if not has_evaluation_result %}d-none{% endif %}" target="_blank">
     <i class="fa-solid fa-file-pdf me-1"></i>PDF
   </a>
   <span class="ms-auto text-muted small d-none d-md-inline">
@@ -366,7 +366,7 @@
     const establishmentSelect = document.getElementById('id_meta-establishment');
     const visitDateInput = document.getElementById('id_meta-visit_date');
     const hasEvaluationResult = '{{ has_evaluation_result|yesno:"true,false" }}' === 'true';
-    let evaluationStarted = hasEvaluationResult;
+    let evaluationStarted = !!establishmentSelect.value || hasEvaluationResult;
     if (!lookupInput || !establishmentSelect) {
       return;
     }
@@ -424,7 +424,9 @@
       const hint = document.getElementById('establishmentHint');
       const startAction = document.getElementById('startEvaluationAction');
       const content = document.getElementById('evaluationContent');
-      const showItems = hasSelection && (hasEvaluationResult || evaluationStarted);
+      const saveBar = document.getElementById('evalSaveBar');
+      const pdfLink = document.getElementById('evaluationPdfLink');
+      const showItems = hasSelection && evaluationStarted;
       if (hint) {
         hint.classList.toggle('d-none', hasSelection);
       }
@@ -433,6 +435,12 @@
       }
       if (content) {
         content.classList.toggle('d-none', !showItems);
+      }
+      if (saveBar) {
+        saveBar.classList.toggle('d-none', !showItems);
+      }
+      if (pdfLink) {
+        pdfLink.classList.toggle('d-none', !showItems || !hasEvaluationResult);
       }
       updateEstablishmentDetails();
     };
@@ -452,7 +460,7 @@
       if (exact) {
         establishmentSelect.value = exact.id;
         lookupInput.value = exact.label;
-        evaluationStarted = hasEvaluationResult;
+        evaluationStarted = true;
         toggleEvaluationVisibility();
         return;
       }
@@ -463,7 +471,7 @@
       if (startsWith.length === 1) {
         establishmentSelect.value = startsWith[0].id;
         lookupInput.value = startsWith[0].label;
-        evaluationStarted = hasEvaluationResult;
+        evaluationStarted = true;
       } else {
         establishmentSelect.value = '';
         evaluationStarted = hasEvaluationResult;
@@ -485,7 +493,7 @@
       if (exact) {
         establishmentSelect.value = exact.id;
         lookupInput.value = exact.label;
-        evaluationStarted = hasEvaluationResult;
+        evaluationStarted = true;
       } else {
         establishmentSelect.value = '';
         evaluationStarted = hasEvaluationResult;
@@ -493,8 +501,13 @@
       toggleEvaluationVisibility();
     };
 
-    if (!hasEvaluationResult) {
-      establishmentSelect.value = '';
+    const initiallySelectedEntry = optionEntries.find(function(entry) {
+      return entry.id === establishmentSelect.value;
+    });
+    if (initiallySelectedEntry) {
+      lookupInput.value = initiallySelectedEntry.label;
+      evaluationStarted = true;
+    } else if (!hasEvaluationResult) {
       lookupInput.value = '';
     }
     toggleEvaluationVisibility();
