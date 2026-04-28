@@ -99,6 +99,10 @@
           <label class="form-label">{{ form.progress_percent.label }}</label>
           {{ form.progress_percent }}
         </div>
+        <div class="col-md-4">
+          <label class="form-label">{{ form.evaluation.label }}</label>
+          {{ form.evaluation }}
+        </div>
         <div class="col-md-6">
           <label class="form-label">{{ form.challenges.label }}</label>
           {{ form.challenges }}
@@ -172,7 +176,7 @@
             <th>نظام الجودة</th>
             <th>الإنجاز</th>
             <th>التواريخ</th>
-            <th>مراجع الربط</th>
+            <th>التقييم المرتبط</th>
           </tr>
         </thead>
         <tbody>
@@ -197,6 +201,14 @@
               <div class="progress" style="height: 8px;">
                 <div class="progress-bar bg-success" style="width: {{ item.progress_percent }}%"></div>
               </div>
+            </td>
+            <td>
+              {% if item.evaluation %}
+                <span class="badge bg-primary">{{ item.evaluation.get_classification_display }}</span><br>
+                <span class="small text-muted">بتاريخ: {{ item.evaluation.visit_date|date:'Y-m-d' }}</span>
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
             </td>
             <td>
               <div class="small">البدء: {{ item.start_date|date:"Y/m/d"|default:"-"|arabic_digits }}</div>

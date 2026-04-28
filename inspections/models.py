@@ -407,6 +407,15 @@ class QualificationFollowUp(models.Model):
     progress_percent = models.PositiveSmallIntegerField('نسبة الإنجاز (%)', default=0)
     challenges = models.TextField('التحديات', blank=True)
     notes = models.TextField('ملاحظات', blank=True)
+    evaluation = models.ForeignKey(
+        'Evaluation',
+        verbose_name='التقييم المرتبط',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='qualification_followups',
+        help_text='التقييم الذي أدى إلى تحديث أو تغيير حالة التأهيل.'
+    )
     created_at = models.DateTimeField('تاريخ الإنشاء', auto_now_add=True)
     updated_at = models.DateTimeField('تاريخ التحديث', auto_now=True)
 

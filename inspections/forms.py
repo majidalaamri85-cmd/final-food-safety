@@ -220,7 +220,7 @@ class QualificationFollowUpForm(forms.ModelForm):
             'establishment', 'governorate', 'establishment_name', 'activity_type',
             'current_status', 'quality_system', 'custom_quality_system',
             'start_date', 'expected_completion_date', 'progress_percent',
-            'challenges', 'notes',
+            'challenges', 'notes', 'evaluation',
         ]
         widgets = {
             'establishment': forms.Select(attrs={'class': 'form-select', 'data-autofill': 'qualification-establishment'}),
@@ -235,6 +235,7 @@ class QualificationFollowUpForm(forms.ModelForm):
             'progress_percent': forms.NumberInput(attrs={'class': 'form-control', 'min': '0', 'max': '100'}),
             'challenges': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
             'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'evaluation': forms.Select(attrs={'class': 'form-select'}),
         }
         labels = {
             'establishment': 'المنشأة المسجلة',
@@ -249,6 +250,7 @@ class QualificationFollowUpForm(forms.ModelForm):
             'progress_percent': 'نسبة الإنجاز (%)',
             'challenges': 'التحديات',
             'notes': 'ملاحظات',
+            'evaluation': 'التقييم المرتبط',
         }
 
 
