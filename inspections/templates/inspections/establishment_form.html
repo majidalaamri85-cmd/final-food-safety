@@ -30,9 +30,14 @@
         <div class="col-12"><h5 class="mb-1">البيانات الأساسية</h5></div>
 
         <div class="col-md-3">
+          <label class="form-label">الهوية الوطنية للمنشأة</label>
+          <input type="text" class="form-control" value="{{ form.instance.reference_no }}" readonly>
+          <div class="form-text">يتم توليدها تلقائياً وتستخدم كهوية وطنية للمنشأة في جميع الخطابات والتقارير والربط مع الجهات.</div>
+        </div>
+        <div class="col-md-3">
           <label class="form-label">{{ form.establishment_no.label }}</label>
           {{ form.establishment_no }}
-          <div class="form-text">يُولَّد تلقائياً إذا تُرك فارغاً</div>
+          <div class="form-text">رقم تسلسلي داخلي (للاستخدام الإداري فقط)</div>
           {% if form.establishment_no.errors %}<div class="text-danger small">{{ form.establishment_no.errors }}</div>{% endif %}
         </div>
         <div class="col-md-5">
