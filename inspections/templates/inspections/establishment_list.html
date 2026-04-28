@@ -16,11 +16,11 @@
 <form class="card mb-3">
   <div class="card-body">
     <div class="row g-3 align-items-end">
-      <div class="col-md-4">
+      <div class="col-md-3">
         <label class="form-label"><i class="fa-solid fa-magnifying-glass me-1"></i>بحث</label>
         <input class="form-control" name="q" value="{{ q }}" placeholder="رقم المنشأة أو الاسم التجاري أو النشاط أو الترخيص">
       </div>
-      <div class="col-md-3">
+      <div class="col-md-2">
         <label class="form-label"><i class="fa-solid fa-map me-1"></i>المحافظة</label>
         <select name="governorate" id="governorateFilter" class="form-select">
           <option value="">كل المحافظات</option>
@@ -29,12 +29,21 @@
           {% endfor %}
         </select>
       </div>
-      <div class="col-md-3">
+      <div class="col-md-2">
         <label class="form-label"><i class="fa-solid fa-location-dot me-1"></i>الولاية</label>
         <select name="wilayat" id="wilayatFilter" class="form-select">
           <option value="">كل الولايات</option>
           {% for wilayat in wilayats %}
             <option value="{{ wilayat.id }}" data-governorate="{{ wilayat.governorate_id }}" {% if selected_wilayat == wilayat.id|stringformat:'s' %}selected{% endif %}>{{ wilayat.name_ar }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label"><i class="fa-solid fa-industry me-1"></i>النشاط</label>
+        <select name="activity" class="form-select">
+          <option value="">كل الأنشطة</option>
+          {% for activity in activity_options %}
+            <option value="{{ activity }}" {% if selected_activity == activity %}selected{% endif %}>{{ activity }}</option>
           {% endfor %}
         </select>
       </div>
@@ -103,17 +112,17 @@
   <div class="text-muted small">صفحة {{ page_obj.number|arabic_digits }} من {{ page_obj.paginator.num_pages|arabic_digits }} &mdash; إجمالي {{ page_obj.paginator.count|arabic_digits }} منشأة</div>
   <ul class="pagination mb-0">
     {% if page_obj.has_previous %}
-      <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&q={{ q }}&governorate={{ selected_governorate }}&wilayat={{ selected_wilayat }}"><i class="fa-solid fa-chevron-right fa-xs"></i></a></li>
+      <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&q={{ q }}&governorate={{ selected_governorate }}&wilayat={{ selected_wilayat }}&activity={{ selected_activity }}"><i class="fa-solid fa-chevron-right fa-xs"></i></a></li>
     {% endif %}
     {% for num in page_obj.paginator.page_range %}
       {% if page_obj.number == num %}
         <li class="page-item active"><span class="page-link">{{ num|arabic_digits }}</span></li>
       {% elif num >= page_obj.number|add:'-3' and num <= page_obj.number|add:'3' %}
-        <li class="page-item"><a class="page-link" href="?page={{ num }}&q={{ q }}&governorate={{ selected_governorate }}&wilayat={{ selected_wilayat }}">{{ num|arabic_digits }}</a></li>
+        <li class="page-item"><a class="page-link" href="?page={{ num }}&q={{ q }}&governorate={{ selected_governorate }}&wilayat={{ selected_wilayat }}&activity={{ selected_activity }}">{{ num|arabic_digits }}</a></li>
       {% endif %}
     {% endfor %}
     {% if page_obj.has_next %}
-      <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&q={{ q }}&governorate={{ selected_governorate }}&wilayat={{ selected_wilayat }}"><i class="fa-solid fa-chevron-left fa-xs"></i></a></li>
+      <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&q={{ q }}&governorate={{ selected_governorate }}&wilayat={{ selected_wilayat }}&activity={{ selected_activity }}"><i class="fa-solid fa-chevron-left fa-xs"></i></a></li>
     {% endif %}
   </ul>
 </nav>

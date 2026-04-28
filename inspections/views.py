@@ -169,6 +169,15 @@ def _get_reference_data():
     return reference_data
 
 
+def _get_activity_options(qs):
+    return list(
+        qs.exclude(activity_type='')
+        .order_by('activity_type')
+        .values_list('activity_type', flat=True)
+        .distinct()
+    )
+
+
 def _build_dashboard_cache_key(user_id, governorate_id, wilayat_id, classification, approval_status, date_from, date_to):
     raw = '|'.join([
         str(user_id),
@@ -555,11 +564,13 @@ def establishment_list(request):
         .order_by('commercial_name', 'id')
     )
     qs, _ = _apply_rbac(qs, None, profile)
+    activity_options = _get_activity_options(qs)
 
     q = request.GET.get('q', '').strip()
     normalized_q = _normalize_digit_text(q)
     governorate_id = request.GET.get('governorate', '').strip()
     wilayat_id = request.GET.get('wilayat', '').strip()
+    activity = request.GET.get('activity', '').strip()
     if q:
         filters = (
             Q(commercial_name__icontains=q) |
@@ -574,6 +585,8 @@ def establishment_list(request):
         qs = qs.filter(governorate_id=governorate_id)
     if wilayat_id:
         qs = qs.filter(wilayat_id=wilayat_id)
+    if activity:
+        qs = qs.filter(activity_type=activity)
     reference_data = _get_reference_data()
 
     paginator = Paginator(qs, PAGE_SIZE)
@@ -585,8 +598,10 @@ def establishment_list(request):
         'q': q,
         'governorates': reference_data['governorates'],
         'wilayats': reference_data['wilayats'],
+        'activity_options': activity_options,
         'selected_governorate': governorate_id,
         'selected_wilayat': wilayat_id,
+        'selected_activity': activity,
     })
 
 
@@ -621,6 +636,7 @@ def evaluation_list(request):
             'classification',
             'approval_status',
             'establishment__commercial_name',
+            'establishment__activity_type',
             'establishment__license_no',
             'establishment__establishment_no',
             'establishment__commercial_reg',
@@ -630,10 +646,14 @@ def evaluation_list(request):
         .order_by('-visit_date', '-created_at')
     )
     _, qs = _apply_rbac(None, qs, profile)
+    activity_options = _get_activity_options(
+        Establishment.objects.filter(evaluations__in=qs).distinct()
+    )
 
     governorate_id = request.GET.get('governorate', '').strip()
     wilayat_id = request.GET.get('wilayat', '').strip()
     classification = request.GET.get('classification', '').strip()
+    activity = request.GET.get('activity', '').strip()
     q = request.GET.get('q', '').strip()
     normalized_q = _normalize_digit_text(q)
 
@@ -643,9 +663,12 @@ def evaluation_list(request):
         qs = qs.filter(establishment__wilayat_id=wilayat_id)
     if classification:
         qs = qs.filter(classification=classification)
+    if activity:
+        qs = qs.filter(establishment__activity_type=activity)
     if q:
         filters = (
             Q(establishment__commercial_name__icontains=q) |
+            Q(establishment__activity_type__icontains=q) |
             Q(establishment__license_no__icontains=q) |
             Q(establishment__commercial_reg__icontains=q)
         )
@@ -675,9 +698,11 @@ def evaluation_list(request):
             for wilayat in reference_data['wilayats']
         ],
         'classification_choices': classification_choices,
+        'activity_options': activity_options,
         'selected_governorate': governorate_id,
         'selected_wilayat': wilayat_id,
         'selected_classification': classification,
+        'selected_activity': activity,
         'q': q,
     })
 
@@ -954,11 +979,38 @@ def corrective_action_update(request, pk):
 
 @login_required
 def export_establishments_excel(request):
+    profile = _get_profile(request.user)
+    qs = Establishment.objects.select_related('governorate', 'wilayat').all()
+    qs, _ = _apply_rbac(qs, None, profile)
+
+    governorate_id = request.GET.get('governorate', '').strip()
+    wilayat_id = request.GET.get('wilayat', '').strip()
+    activity = request.GET.get('activity', '').strip()
+    q = request.GET.get('q', '').strip()
+    normalized_q = _normalize_digit_text(q)
+
+    if governorate_id:
+        qs = qs.filter(governorate_id=governorate_id)
+    if wilayat_id:
+        qs = qs.filter(wilayat_id=wilayat_id)
+    if activity:
+        qs = qs.filter(activity_type=activity)
+    if q:
+        filters = (
+            Q(commercial_name__icontains=q) |
+            Q(activity_type__icontains=q) |
+            Q(license_no__icontains=q) |
+            Q(commercial_reg__icontains=q)
+        )
+        if normalized_q.isdigit():
+            filters |= Q(establishment_no=int(normalized_q))
+        qs = qs.filter(filters)
+
     wb = Workbook()
     ws = wb.active
     ws.title = 'المنشآت'
     ws.append(['الرقم المرجعي', 'رقم المنشأة', 'الاسم التجاري', 'النشاط', 'المحافظة', 'الولاية', 'رقم الترخيص', 'السجل التجاري', 'الحالة'])
-    for e in Establishment.objects.select_related('governorate', 'wilayat').all():
+    for e in qs:
         ws.append([
             e.reference_no,
             e.establishment_no,
@@ -973,16 +1025,20 @@ def export_establishments_excel(request):
 
 @login_required
 def export_evaluations_excel(request):
+    profile = _get_profile(request.user)
     qs = Evaluation.objects.select_related(
         'establishment', 'establishment__governorate', 'establishment__wilayat', 'inspector'
     ).prefetch_related(
         Prefetch('items', queryset=EvaluationItem.objects.filter(status='non_compliant').select_related('criterion')),
         Prefetch('record_checks', queryset=EvaluationRecordCheck.objects.filter(is_available=False).select_related('record')),
     ).all()
+    _, qs = _apply_rbac(None, qs, profile)
     governorate_id = request.GET.get('governorate', '').strip()
     wilayat_id = request.GET.get('wilayat', '').strip()
     classification = request.GET.get('classification', '').strip()
+    activity = request.GET.get('activity', '').strip()
     q = request.GET.get('q', '').strip()
+    normalized_q = _normalize_digit_text(q)
 
     if governorate_id:
         qs = qs.filter(establishment__governorate_id=governorate_id)
@@ -990,12 +1046,18 @@ def export_evaluations_excel(request):
         qs = qs.filter(establishment__wilayat_id=wilayat_id)
     if classification:
         qs = qs.filter(classification=classification)
+    if activity:
+        qs = qs.filter(establishment__activity_type=activity)
     if q:
-        qs = qs.filter(
+        filters = (
             Q(establishment__commercial_name__icontains=q) |
+            Q(establishment__activity_type__icontains=q) |
             Q(establishment__license_no__icontains=q) |
             Q(establishment__commercial_reg__icontains=q)
         )
+        if normalized_q.isdigit():
+            filters |= Q(establishment__establishment_no=int(normalized_q))
+        qs = qs.filter(filters)
 
     wb = Workbook()
     ws = wb.active

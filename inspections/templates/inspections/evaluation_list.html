@@ -9,7 +9,7 @@
     <div class="sub">فلترة التقارير بحسب المحافظة والولاية ودرجة التصنيف</div>
   </div>
   <div class="d-flex gap-2 flex-wrap">
-    <a class="btn btn-outline-success" href="/exports/evaluations.xlsx?governorate={{ selected_governorate }}&wilayat={{ selected_wilayat }}&classification={{ selected_classification }}&q={{ q }}">
+    <a class="btn btn-outline-success" href="/exports/evaluations.xlsx?governorate={{ selected_governorate }}&wilayat={{ selected_wilayat }}&classification={{ selected_classification }}&activity={{ selected_activity }}&q={{ q }}">
       <i class="fa-solid fa-file-excel me-1"></i>تصدير إكسل
     </a>
     <a class="btn btn-success" href="/evaluations/new/">
@@ -21,7 +21,7 @@
 <div class="card mb-3">
   <div class="card-body">
     <form class="row g-3 align-items-end">
-      <div class="col-md-3">
+      <div class="col-md-2">
         <label class="form-label"><i class="fa-solid fa-map me-1"></i>المحافظة</label>
         <select name="governorate" id="governorateFilter" class="form-select">
           <option value="">كل المحافظات</option>
@@ -30,7 +30,7 @@
           {% endfor %}
         </select>
       </div>
-      <div class="col-md-3">
+      <div class="col-md-2">
         <label class="form-label"><i class="fa-solid fa-location-dot me-1"></i>الولاية</label>
         <select name="wilayat" id="wilayatFilter" class="form-select">
           <option value="">كل الولايات</option>
@@ -51,6 +51,15 @@
       <div class="col-md-2">
         <label class="form-label"><i class="fa-solid fa-magnifying-glass me-1"></i>بحث</label>
         <input class="form-control" name="q" value="{{ q }}" placeholder="رقم المنشأة أو اسم المنشأة...">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label"><i class="fa-solid fa-industry me-1"></i>النشاط</label>
+        <select name="activity" class="form-select">
+          <option value="">كل الأنشطة</option>
+          {% for activity in activity_options %}
+            <option value="{{ activity }}" {% if selected_activity == activity %}selected{% endif %}>{{ activity }}</option>
+          {% endfor %}
+        </select>
       </div>
       <div class="col-md-2 d-flex gap-2">
         <button class="btn btn-success flex-grow-1" type="submit"><i class="fa-solid fa-filter me-1"></i>تطبيق</button>
@@ -128,17 +137,17 @@
   <div class="text-muted small">صفحة {{ page_obj.number|arabic_digits }} من {{ page_obj.paginator.num_pages|arabic_digits }} &mdash; إجمالي {{ page_obj.paginator.count|arabic_digits }} تقرير</div>
   <ul class="pagination mb-0">
     {% if page_obj.has_previous %}
-      <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&q={{ q }}&governorate={{ selected_governorate }}&wilayat={{ selected_wilayat }}&classification={{ selected_classification }}"><i class="fa-solid fa-chevron-right fa-xs"></i></a></li>
+      <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&q={{ q }}&governorate={{ selected_governorate }}&wilayat={{ selected_wilayat }}&classification={{ selected_classification }}&activity={{ selected_activity }}"><i class="fa-solid fa-chevron-right fa-xs"></i></a></li>
     {% endif %}
     {% for num in page_obj.paginator.page_range %}
       {% if page_obj.number == num %}
         <li class="page-item active"><span class="page-link">{{ num|arabic_digits }}</span></li>
       {% elif num >= page_obj.number|add:'-3' and num <= page_obj.number|add:'3' %}
-        <li class="page-item"><a class="page-link" href="?page={{ num }}&q={{ q }}&governorate={{ selected_governorate }}&wilayat={{ selected_wilayat }}&classification={{ selected_classification }}">{{ num|arabic_digits }}</a></li>
+        <li class="page-item"><a class="page-link" href="?page={{ num }}&q={{ q }}&governorate={{ selected_governorate }}&wilayat={{ selected_wilayat }}&classification={{ selected_classification }}&activity={{ selected_activity }}">{{ num|arabic_digits }}</a></li>
       {% endif %}
     {% endfor %}
     {% if page_obj.has_next %}
-      <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&q={{ q }}&governorate={{ selected_governorate }}&wilayat={{ selected_wilayat }}&classification={{ selected_classification }}"><i class="fa-solid fa-chevron-left fa-xs"></i></a></li>
+      <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&q={{ q }}&governorate={{ selected_governorate }}&wilayat={{ selected_wilayat }}&classification={{ selected_classification }}&activity={{ selected_activity }}"><i class="fa-solid fa-chevron-left fa-xs"></i></a></li>
     {% endif %}
   </ul>
 </nav>
