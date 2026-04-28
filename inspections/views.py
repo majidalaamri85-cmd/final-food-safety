@@ -1298,7 +1298,6 @@ def _build_evaluation_docx(evaluation):
             headers = ['البند', 'نص البند غير المستوفي', 'الملاحظات', 'الإجراء التصحيحي', 'الصور']
             for index, header in enumerate(headers):
                 _set_cell_text(table.rows[0].cells[index], header, bold=True)
-
             for item in items:
                 cells = table.add_row().cells
                 _set_cell_text(cells[0], item.criterion.code)
@@ -1328,10 +1327,32 @@ def _build_evaluation_docx(evaluation):
                 else:
                     _set_cell_text(image_cell, '-')
 
+    # نتيجة التقييم (جدول)
+    _add_docx_heading(document, 'نتيجة التقييم', 2)
+    result_table = document.add_table(rows=1, cols=3)
+    result_table.alignment = WD_TABLE_ALIGNMENT.RIGHT
+    result_table.style = 'Table Grid'
+    headers = ['الوصف', 'النسبة', 'التصنيف']
+    for index, header in enumerate(headers):
+        _set_cell_text(result_table.rows[0].cells[index], header, bold=True)
+    status = getattr(evaluation, 'establishment_status', None)
+    if status:
+        row = result_table.add_row().cells
+        _set_cell_text(row[0], getattr(status, 'description', ''))
+        _set_cell_text(row[1], f"{evaluation.percentage}%")
+        _set_cell_text(row[2], getattr(status, 'label', ''))
+
+    # ملاحظات عامة (قبل فريق التقييم)
+    if (evaluation.notes or '').strip():
+        _add_docx_heading(document, 'ملاحظات عامة', 2)
+        _add_docx_paragraph(document, '', evaluation.notes)
+
+    # الإجراءات التصحيحية العامة (إن وجدت)
     if (evaluation.corrective_action or '').strip():
         _add_docx_heading(document, 'الإجراءات التصحيحية العامة', 2)
         _add_docx_paragraph(document, '', evaluation.corrective_action)
 
+    # فريق التقييم والاعتماد
     if context['signature_rows']:
         _add_docx_heading(document, 'فريق التقييم والاعتماد', 2)
         sign_table = document.add_table(rows=1, cols=3)
