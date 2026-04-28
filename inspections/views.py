@@ -955,6 +955,24 @@ def evaluation_update(request, pk):
                 evaluation.save(update_fields=['total_points', 'percentage', 'classification', 'approval_status'])
                 EvaluationActivityLog.objects.create(evaluation=evaluation, user=request.user, action='إنهاء التقييم', notes='تم حفظ بنود التقييم وإنهاء التقييم.')
 
+                # ربط التأهيل بنتيجة التقييم تلقائيًا
+                if evaluation.classification in ['excellent', 'good']:
+                    from inspections.models import QualificationFollowUp
+                    qf, created = QualificationFollowUp.objects.get_or_create(
+                        establishment=evaluation.establishment,
+                        defaults={
+                            'governorate': evaluation.establishment.governorate.name_ar,
+                            'establishment_name': evaluation.establishment.commercial_name,
+                            'activity_type': evaluation.establishment.activity_type,
+                            'current_status': 'in_progress',
+                            'evaluation': evaluation,
+                        }
+                    )
+                    if not created:
+                        qf.current_status = 'in_progress'
+                        qf.evaluation = evaluation
+                        qf.save(update_fields=['current_status', 'evaluation'])
+
             # مسح كاش PDF بعد الحفظ حتى لا يُعرض تقرير قديم
             cache.delete(f'pdf_bytes:eval:{evaluation.pk}')
             messages.success(request, f'تم حفظ وإنهاء التقييم بنجاح. النسبة: {evaluation.percentage}% - التصنيف: {evaluation.get_classification_display()}')
