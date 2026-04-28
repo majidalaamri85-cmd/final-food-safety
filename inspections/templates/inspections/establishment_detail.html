@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+{% block title %}تفاصيل المنشأة{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <div class="row g-4">
+    <div class="col-lg-4">
+      <div class="card shadow border-0 mb-4">
+        <div class="card-body">
+          <h4 class="card-title mb-3"><i class="fa-solid fa-building text-success me-2"></i>{{ establishment.commercial_name }}</h4>
+          <ul class="list-group list-group-flush mb-2">
+            <li class="list-group-item"><strong>الرقم المرجعي:</strong> <span class="badge bg-primary">{{ establishment.reference_no }}</span></li>
+            <li class="list-group-item"><strong>المحافظة:</strong> {{ establishment.governorate }}</li>
+            <li class="list-group-item"><strong>الولاية:</strong> {{ establishment.wilayat }}</li>
+            <li class="list-group-item"><strong>النشاط:</strong> {{ establishment.activity_type }}</li>
+            <li class="list-group-item"><strong>الحالة:</strong> 
+              {% if establishment.status == 'active' %}<span class="badge bg-success">نشط</span>
+              {% elif establishment.status == 'suspended' %}<span class="badge bg-warning text-dark">موقوف</span>
+              {% else %}<span class="badge bg-danger">مغلق</span>{% endif %}
+            </li>
+            <li class="list-group-item"><strong>المرحلة الحالية:</strong> {{ qualification|default:'-' }}</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-8">
+      <div class="card shadow border-0 mb-4">
+        <div class="card-header bg-info text-white"><i class="fa-solid fa-stairs"></i> مراحل تأهيل المنشأة</div>
+        <div class="card-body p-0">
+          <div class="table-responsive mb-0">
+            <table class="table table-bordered align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>المرحلة</th>
+                  <th>الحالة</th>
+                  <th>تاريخ البدء</th>
+                  <th>تاريخ الإنجاز المتوقع</th>
+                  <th>نسبة الإنجاز</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for qual in establishment.qualification_followups.all %}
+                <tr class="align-middle">
+                  <td><i class="fa-solid fa-flag-checkered text-secondary me-1"></i> متابعة التأهيل</td>
+                  <td>
+                    {% if qual.current_status == 'completed' %}<span class="badge bg-success">{{ qual.get_current_status_display }}</span>
+                    {% elif qual.current_status == 'in_progress' %}<span class="badge bg-warning text-dark">{{ qual.get_current_status_display }}</span>
+                    {% elif qual.current_status == 'stalled' %}<span class="badge bg-danger">{{ qual.get_current_status_display }}</span>
+                    {% else %}<span class="badge bg-secondary">{{ qual.get_current_status_display }}</span>{% endif %}
+                  </td>
+                  <td>{{ qual.start_date|default:"-" }}</td>
+                  <td>{{ qual.expected_completion_date|default:"-" }}</td>
+                  <td>
+                    <div class="progress" style="height: 18px;">
+                      <div class="progress-bar bg-success" role="progressbar" style="width: {{ qual.progress_percent }}%;" aria-valuenow="{{ qual.progress_percent }}" aria-valuemin="0" aria-valuemax="100">{{ qual.progress_percent }}%</div>
+                    </div>
+                  </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-center">لا توجد بيانات متابعة تأهيل بعد.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="card shadow border-0 mb-4">
+        <div class="card-header bg-success text-white"><i class="fa-solid fa-file-shield"></i> ملفات نظام سلامة الغذاء HACCP</div>
+        <div class="card-body">
+          <form method="post" enctype="multipart/form-data" class="mb-4">
+            {% csrf_token %}
+            <div class="row g-2 align-items-end">
+              <div class="col-md-3">{{ form.file_type.label_tag }}{{ form.file_type }}</div>
+              <div class="col-md-3">{{ form.title.label_tag }}{{ form.title }}</div>
+              <div class="col-md-3">{{ form.file.label_tag }}{{ form.file }}</div>
+              <div class="col-md-3">{{ form.notes.label_tag }}{{ form.notes }}</div>
+              <div class="col-md-12 mt-2"><button class="btn btn-success"><i class="fa-solid fa-upload me-1"></i>رفع الملف</button></div>
+            </div>
+          </form>
+          <div class="table-responsive">
+            <table class="table table-bordered align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th>نوع الملف</th>
+                  <th>العنوان</th>
+                  <th>الملف</th>
+                  <th>تاريخ الرفع</th>
+                  <th>ملاحظات</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for f in haccp_files %}
+                <tr>
+                  <td><i class="fa-solid fa-file-alt text-info me-1"></i> {{ f.get_file_type_display }}</td>
+                  <td>{{ f.title }}</td>
+                  <td><a href="{{ f.file.url }}" target="_blank" class="btn btn-sm btn-outline-secondary"><i class="fa-solid fa-download"></i> تحميل</a></td>
+                  <td>{{ f.uploaded_at|date:"Y-m-d H:i" }}</td>
+                  <td>{{ f.notes }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-center">لا توجد ملفات HACCP بعد.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

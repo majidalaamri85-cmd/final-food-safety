@@ -1,3 +1,29 @@
+from .forms import HACCPFileForm
+from .models import HACCPFile
+# تفاصيل منشأة
+from django.contrib import messages
+from django.shortcuts import get_object_or_404, redirect, render
+
+def establishment_detail(request, pk):
+    establishment = get_object_or_404(Establishment, pk=pk)
+    qualification = getattr(establishment.qualification_followups.first(), 'current_status', None)
+    haccp_files = establishment.haccp_files.all()
+    if request.method == 'POST':
+        form = HACCPFileForm(request.POST, request.FILES)
+        if form.is_valid():
+            haccp_file = form.save(commit=False)
+            haccp_file.establishment = establishment
+            haccp_file.save()
+            messages.success(request, 'تم رفع الملف بنجاح')
+            return redirect('establishment_detail', pk=pk)
+    else:
+        form = HACCPFileForm()
+    return render(request, 'inspections/establishment_detail.html', {
+        'establishment': establishment,
+        'qualification': qualification,
+        'haccp_files': haccp_files,
+        'form': form,
+    })
 import os
 import hashlib
 import tempfile

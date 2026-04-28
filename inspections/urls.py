@@ -11,6 +11,7 @@ urlpatterns = [
     path('qualification-followups/', views.qualification_followup_list, name='qualification_followup_list'),
     path('establishments/', views.establishment_list, name='establishment_list'),
     path('establishments/new/', views.establishment_create, name='establishment_create'),
+    path('establishments/<int:pk>/', views.establishment_detail, name='establishment_detail'),
     path('evaluations/', views.evaluation_list, name='evaluation_list'),
     path('evaluations/new/', views.evaluation_create, name='evaluation_create'),
     path('evaluations/<int:pk>/edit/', views.evaluation_update, name='evaluation_update'),

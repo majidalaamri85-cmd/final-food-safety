@@ -10,6 +10,7 @@ from .models import (
     EvaluationTeamMember,
     QualificationFollowUp,
     Wilayat,
+    HACCPFile,
 )
 
 
@@ -248,4 +249,16 @@ class QualificationFollowUpForm(forms.ModelForm):
             'progress_percent': 'نسبة الإنجاز (%)',
             'challenges': 'التحديات',
             'notes': 'ملاحظات',
+        }
+
+
+class HACCPFileForm(forms.ModelForm):
+    class Meta:
+        model = HACCPFile
+        fields = ['file_type', 'title', 'file', 'notes']
+        widgets = {
+            'file_type': forms.Select(attrs={'class': 'form-select'}),
+            'title': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'عنوان الملف (اختياري)'}),
+            'file': forms.ClearableFileInput(attrs={'class': 'form-control'}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'ملاحظات (اختياري)'}),
         }

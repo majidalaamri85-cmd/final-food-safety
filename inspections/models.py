@@ -1,3 +1,45 @@
+from django.db import models
+
+# HACCP File Model
+class HACCPFile(models.Model):
+    HACCP_FILE_TYPES = [
+        ('policy', 'سياسة سلامة الغذاء'),
+        ('product_desc', 'وصف المنتج'),
+        ('process_flow', 'مخطط تدفق العملية'),
+        ('flow_verification', 'التحقق من مخطط التدفق'),
+        ('hazard_analysis', 'تحليل المخاطر'),
+        ('ccp', 'تحديد CCP'),
+        ('critical_limits', 'الحدود الحرجة'),
+        ('monitoring', 'إجراءات المراقبة'),
+        ('corrective', 'الإجراءات التصحيحية'),
+        ('verification', 'التحقق والتحقق الداخلي'),
+        ('records', 'السجلات والنماذج'),
+        ('recall_plan', 'خطة السحب والاستدعاء'),
+        ('traceability', 'التتبع'),
+        ('training', 'التدريب'),
+        ('prps', 'النظافة والاشتراطات التمهيدية PRPs'),
+        ('other', 'ملف آخر'),
+    ]
+
+    establishment = models.ForeignKey(
+        'Establishment',
+        verbose_name='المنشأة',
+        on_delete=models.CASCADE,
+        related_name='haccp_files',
+    )
+    file_type = models.CharField('نوع الملف', max_length=30, choices=HACCP_FILE_TYPES)
+    title = models.CharField('عنوان الملف', max_length=255, blank=True)
+    file = models.FileField('الملف', upload_to='haccp_files/')
+    uploaded_at = models.DateTimeField('تاريخ الرفع', auto_now_add=True)
+    notes = models.TextField('ملاحظات', blank=True)
+
+    class Meta:
+        verbose_name = 'ملف HACCP'
+        verbose_name_plural = 'ملفات HACCP'
+        ordering = ['file_type', 'uploaded_at']
+
+    def __str__(self):
+        return f"{self.get_file_type_display()} - {self.establishment.commercial_name}"
 from decimal import Decimal
 from django.contrib.auth.models import User
 from django.db import models
