@@ -1343,18 +1343,18 @@ def _build_evaluation_report_context(evaluation):
     }
 
 
-def _set_docx_rtl(paragraph):
-    paragraph.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+def _set_docx_rtl(paragraph, alignment=WD_ALIGN_PARAGRAPH.RIGHT):
+    paragraph.alignment = alignment
     p_pr = paragraph._element.get_or_add_pPr()
     if p_pr.find(qn('w:bidi')) is None:
         p_pr.append(OxmlElement('w:bidi'))
 
 
-def _set_cell_text(cell, text, bold=False):
-    cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.TOP
+def _set_cell_text(cell, text, bold=False, alignment=WD_ALIGN_PARAGRAPH.CENTER, vertical_alignment=WD_CELL_VERTICAL_ALIGNMENT.CENTER):
+    cell.vertical_alignment = vertical_alignment
     cell.text = ''
     paragraph = cell.paragraphs[0]
-    _set_docx_rtl(paragraph)
+    _set_docx_rtl(paragraph, alignment=alignment)
     run = paragraph.add_run(str(text or ''))
     run.bold = bold
     run.font.name = 'Tahoma'
@@ -1364,7 +1364,7 @@ def _set_cell_text(cell, text, bold=False):
 
 def _add_docx_heading(document, text, level=1):
     paragraph = document.add_heading('', level=level)
-    _set_docx_rtl(paragraph)
+    _set_docx_rtl(paragraph, alignment=WD_ALIGN_PARAGRAPH.CENTER)
     run = paragraph.add_run(str(text or ''))
     run.font.name = 'Tahoma'
     run._element.rPr.rFonts.set(qn('w:cs'), 'Tahoma')
@@ -1390,6 +1390,20 @@ def _format_docx_date(value):
     return value.strftime('%Y/%m/%d')
 
 
+def _add_docx_report_header(section):
+    header_path = finders.find('images/report_header.png')
+    if not header_path or not os.path.exists(header_path):
+        return
+    header = section.header
+    paragraph = header.paragraphs[0] if header.paragraphs else header.add_paragraph()
+    _set_docx_rtl(paragraph, alignment=WD_ALIGN_PARAGRAPH.CENTER)
+    available_width = section.page_width - section.left_margin - section.right_margin
+    try:
+        paragraph.add_run().add_picture(header_path, width=available_width)
+    except Exception:
+        return
+
+
 def _build_evaluation_docx(evaluation):
     context = _build_evaluation_report_context(evaluation)
     grouped_items = context['grouped_items']
@@ -1399,10 +1413,12 @@ def _build_evaluation_docx(evaluation):
     section = document.sections[0]
     section.orientation = WD_ORIENT.LANDSCAPE
     section.page_width, section.page_height = section.page_height, section.page_width
-    section.top_margin = Inches(0.5)
+    section.top_margin = Inches(1.65)
     section.bottom_margin = Inches(0.5)
     section.left_margin = Inches(0.55)
     section.right_margin = Inches(0.55)
+    section.header_distance = Inches(0.15)
+    _add_docx_report_header(section)
 
     styles = document.styles
     styles['Normal'].font.name = 'Tahoma'
@@ -1412,7 +1428,7 @@ def _build_evaluation_docx(evaluation):
     _add_docx_heading(document, f'تقرير زيارة ميدانية إلى شركة: {evaluation.establishment.commercial_name}', 1)
 
     info_table = document.add_table(rows=0, cols=4)
-    info_table.alignment = WD_TABLE_ALIGNMENT.RIGHT
+    info_table.alignment = WD_TABLE_ALIGNMENT.CENTER
     info_table.style = 'Table Grid'
     rows = [
         ('مرجع التقرير', evaluation.report_reference_no, 'تاريخ الزيارة', _format_docx_date(evaluation.visit_date)),
@@ -1437,7 +1453,7 @@ def _build_evaluation_docx(evaluation):
         for section_obj, items in grouped_items.items():
             _add_docx_heading(document, f'{section_obj.sort_order} - {section_obj.name_ar}', 3)
             table = document.add_table(rows=1, cols=5)
-            table.alignment = WD_TABLE_ALIGNMENT.RIGHT
+            table.alignment = WD_TABLE_ALIGNMENT.CENTER
             table.style = 'Table Grid'
             headers = ['البند', 'نص البند غير المستوفي', 'الملاحظات', 'الإجراء التصحيحي', 'الصور']
             for index, header in enumerate(headers):
@@ -1455,7 +1471,7 @@ def _build_evaluation_docx(evaluation):
                 if images:
                     for image in images:
                         paragraph = image_cell.add_paragraph()
-                        _set_docx_rtl(paragraph)
+                        _set_docx_rtl(paragraph, alignment=WD_ALIGN_PARAGRAPH.CENTER)
                         image_path = getattr(image.image, 'path', '')
                         if image_path and os.path.exists(image_path):
                             try:
@@ -1466,7 +1482,7 @@ def _build_evaluation_docx(evaluation):
                             paragraph.add_run('الصورة غير متوفرة')
                         if image.caption:
                             caption = image_cell.add_paragraph()
-                            _set_docx_rtl(caption)
+                            _set_docx_rtl(caption, alignment=WD_ALIGN_PARAGRAPH.CENTER)
                             caption.add_run(image.caption)
                 else:
                     _set_cell_text(image_cell, '-')
@@ -1474,7 +1490,7 @@ def _build_evaluation_docx(evaluation):
     # نتيجة التقييم (جدول)
     _add_docx_heading(document, 'نتيجة التقييم', 2)
     result_table = document.add_table(rows=1, cols=3)
-    result_table.alignment = WD_TABLE_ALIGNMENT.RIGHT
+    result_table.alignment = WD_TABLE_ALIGNMENT.CENTER
     result_table.style = 'Table Grid'
     headers = ['الوصف', 'النسبة', 'التصنيف']
     for index, header in enumerate(headers):
@@ -1482,9 +1498,9 @@ def _build_evaluation_docx(evaluation):
     status = getattr(evaluation, 'establishment_status', None)
     if status:
         row = result_table.add_row().cells
-        _set_cell_text(row[0], getattr(status, 'description', ''))
+        _set_cell_text(row[0], status.get('description', '') if isinstance(status, dict) else getattr(status, 'description', ''))
         _set_cell_text(row[1], f"{evaluation.percentage}%")
-        _set_cell_text(row[2], getattr(status, 'label', ''))
+        _set_cell_text(row[2], status.get('label', '') if isinstance(status, dict) else getattr(status, 'label', ''))
 
     # ملاحظات عامة (قبل فريق التقييم)
     if (evaluation.notes or '').strip():
@@ -1500,7 +1516,7 @@ def _build_evaluation_docx(evaluation):
     if context['signature_rows']:
         _add_docx_heading(document, 'فريق التقييم والاعتماد', 2)
         sign_table = document.add_table(rows=1, cols=3)
-        sign_table.alignment = WD_TABLE_ALIGNMENT.RIGHT
+        sign_table.alignment = WD_TABLE_ALIGNMENT.CENTER
         sign_table.style = 'Table Grid'
         for index, header in enumerate(['الاسم', 'المسمى الوظيفي', 'التوقيع']):
             _set_cell_text(sign_table.rows[0].cells[index], header, bold=True)
