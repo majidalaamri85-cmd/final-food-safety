@@ -955,23 +955,51 @@ def evaluation_update(request, pk):
                 evaluation.save(update_fields=['total_points', 'percentage', 'classification', 'approval_status'])
                 EvaluationActivityLog.objects.create(evaluation=evaluation, user=request.user, action='إنهاء التقييم', notes='تم حفظ بنود التقييم وإنهاء التقييم.')
 
-                # ربط التأهيل بنتيجة التقييم تلقائيًا
-                if evaluation.classification in ['excellent', 'good']:
-                    from inspections.models import QualificationFollowUp
-                    qf, created = QualificationFollowUp.objects.get_or_create(
-                        establishment=evaluation.establishment,
-                        defaults={
-                            'governorate': evaluation.establishment.governorate.name_ar,
-                            'establishment_name': evaluation.establishment.commercial_name,
-                            'activity_type': evaluation.establishment.activity_type,
-                            'current_status': 'in_progress',
-                            'evaluation': evaluation,
-                        }
-                    )
-                    if not created:
-                        qf.current_status = 'in_progress'
-                        qf.evaluation = evaluation
-                        qf.save(update_fields=['current_status', 'evaluation'])
+                # محرك التأهيل الذكي وربط البنود غير المستوفية وخطة HACCP
+                from inspections.models import QualificationFollowUp, HACCPFile
+                pct = float(evaluation.percentage)
+                if pct >= 86:
+                    qual_status = 'qualified'
+                elif pct >= 70:
+                    qual_status = 'conditionally_qualified'
+                elif pct >= 41:
+                    qual_status = 'in_progress'
+                else:
+                    qual_status = 'not_qualified'
+
+                qf, created = QualificationFollowUp.objects.get_or_create(
+                    establishment=evaluation.establishment,
+                    defaults={
+                        'governorate': evaluation.establishment.governorate.name_ar,
+                        'establishment_name': evaluation.establishment.commercial_name,
+                        'activity_type': evaluation.establishment.activity_type,
+                        'current_status': qual_status,
+                        'evaluation': evaluation,
+                    }
+                )
+                if not created:
+                    qf.current_status = qual_status
+                    qf.evaluation = evaluation
+                    qf.save(update_fields=['current_status', 'evaluation'])
+
+                # إنشاء خطة تأهيل تلقائية للبنود غير المستوفية
+                for item in all_items:
+                    if item.status == 'non_compliant':
+                        # ربط كل بند غير مستوفي بخطة التأهيل
+                        # إضافة بند إلى خطة HACCP إذا كان البند متعلقاً بها
+                        if 'خطة تتبع' in item.criterion.name_ar or 'تحليل مخاطر' in item.criterion.name_ar or 'سجلات' in item.criterion.name_ar or 'نظافة' in item.criterion.name_ar:
+                            HACCPFile.objects.get_or_create(
+                                establishment=evaluation.establishment,
+                                file_type='prps' if 'نظافة' in item.criterion.name_ar else (
+                                    'traceability' if 'تتبع' in item.criterion.name_ar else (
+                                        'records' if 'سجلات' in item.criterion.name_ar else 'hazard_analysis'
+                                    )
+                                ),
+                                title=item.criterion.name_ar,
+                                defaults={
+                                    'notes': f'تم إنشاؤه تلقائيًا بناءً على بند غير مستوفي في التقييم رقم {evaluation.pk}',
+                                }
+                            )
 
             # مسح كاش PDF بعد الحفظ حتى لا يُعرض تقرير قديم
             cache.delete(f'pdf_bytes:eval:{evaluation.pk}')
