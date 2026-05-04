@@ -1474,20 +1474,29 @@ def _build_evaluation_docx(evaluation):
     else:
         for section_obj, items in grouped_items.items():
             _add_docx_heading(document, f'{section_obj.sort_order} - {section_obj.name_ar}', 3)
-            table = document.add_table(rows=1, cols=5)
+            has_remarks = any((item.remarks or '').strip() for item in items)
+            num_cols = 5 if has_remarks else 4
+            table = document.add_table(rows=1, cols=num_cols)
             table.alignment = WD_TABLE_ALIGNMENT.CENTER
             table.style = 'Table Grid'
             _set_table_rtl(table)
-            headers = ['البند', 'نص البند غير المستوفي', 'الملاحظات', 'الإجراء التصحيحي', 'الصور']
+            if has_remarks:
+                headers = ['البند', 'نص البند غير المستوفي', 'الملاحظات', 'الإجراء التصحيحي', 'الصور']
+            else:
+                headers = ['البند', 'نص البند غير المستوفي', 'الإجراء التصحيحي', 'الصور']
             for index, header in enumerate(headers):
                 _set_cell_text(table.rows[0].cells[index], header, bold=True)
             for item in items:
                 cells = table.add_row().cells
                 _set_cell_text(cells[0], item.criterion.code)
                 _set_cell_text(cells[1], item.criterion.text_ar)
-                _set_cell_text(cells[2], item.remarks or '-')
-                _set_cell_text(cells[3], item.corrective_action or '-')
-                image_cell = cells[4]
+                if has_remarks:
+                    _set_cell_text(cells[2], item.remarks or '-')
+                    _set_cell_text(cells[3], item.corrective_action or '-')
+                    image_cell = cells[4]
+                else:
+                    _set_cell_text(cells[2], item.corrective_action or '-')
+                    image_cell = cells[3]
                 image_cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.TOP
                 image_cell.text = ''
                 images = images_by_criterion.get(item.criterion_id, [])
