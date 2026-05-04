@@ -1359,6 +1359,18 @@ def _set_docx_rtl(paragraph, alignment=WD_ALIGN_PARAGRAPH.RIGHT):
         p_pr.append(OxmlElement('w:bidi'))
 
 
+def _set_table_rtl(table):
+    """اضبط الجدول ليكون من اليمين إلى اليسار."""
+    tbl = table._tbl
+    tblPr = tbl.tblPr
+    if tblPr is None:
+        tblPr = OxmlElement('w:tblPr')
+        tbl.insert(0, tblPr)
+    if tblPr.find(qn('w:bidiVisual')) is None:
+        bidi = OxmlElement('w:bidiVisual')
+        tblPr.append(bidi)
+
+
 def _set_cell_text(cell, text, bold=False, alignment=WD_ALIGN_PARAGRAPH.CENTER, vertical_alignment=WD_CELL_VERTICAL_ALIGNMENT.CENTER):
     cell.vertical_alignment = vertical_alignment
     cell.text = ''
@@ -1439,6 +1451,7 @@ def _build_evaluation_docx(evaluation):
     info_table = document.add_table(rows=0, cols=4)
     info_table.alignment = WD_TABLE_ALIGNMENT.CENTER
     info_table.style = 'Table Grid'
+    _set_table_rtl(info_table)
     rows = [
         ('مرجع التقرير', evaluation.report_reference_no, 'تاريخ الزيارة', _format_docx_date(evaluation.visit_date)),
         ('اسم المنشأة', evaluation.establishment.commercial_name, 'رقم المنشأة', evaluation.establishment.establishment_no),
@@ -1464,6 +1477,7 @@ def _build_evaluation_docx(evaluation):
             table = document.add_table(rows=1, cols=5)
             table.alignment = WD_TABLE_ALIGNMENT.CENTER
             table.style = 'Table Grid'
+            _set_table_rtl(table)
             headers = ['البند', 'نص البند غير المستوفي', 'الملاحظات', 'الإجراء التصحيحي', 'الصور']
             for index, header in enumerate(headers):
                 _set_cell_text(table.rows[0].cells[index], header, bold=True)
@@ -1501,6 +1515,7 @@ def _build_evaluation_docx(evaluation):
     result_table = document.add_table(rows=1, cols=3)
     result_table.alignment = WD_TABLE_ALIGNMENT.CENTER
     result_table.style = 'Table Grid'
+    _set_table_rtl(result_table)
     headers = ['الوصف', 'النسبة', 'التصنيف']
     for index, header in enumerate(headers):
         _set_cell_text(result_table.rows[0].cells[index], header, bold=True)
@@ -1527,6 +1542,7 @@ def _build_evaluation_docx(evaluation):
         sign_table = document.add_table(rows=1, cols=3)
         sign_table.alignment = WD_TABLE_ALIGNMENT.CENTER
         sign_table.style = 'Table Grid'
+        _set_table_rtl(sign_table)
         for index, header in enumerate(['الاسم', 'المسمى الوظيفي', 'التوقيع']):
             _set_cell_text(sign_table.rows[0].cells[index], header, bold=True)
         for signature in context['signature_rows']:
