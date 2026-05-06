@@ -51,7 +51,7 @@ from docx.enum.table import WD_TABLE_ALIGNMENT, WD_CELL_VERTICAL_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
-from docx.shared import Inches, Pt
+from docx.shared import Inches, Pt, RGBColor
 from xhtml2pdf import files as pisa_files
 from xhtml2pdf import pisa
 
@@ -1388,8 +1388,27 @@ def _set_docx_table_column_widths(table, widths):
             tc_w.set(qn('w:type'), 'dxa')
 
 
-def _set_cell_text(cell, text, bold=False, alignment=WD_ALIGN_PARAGRAPH.CENTER, vertical_alignment=WD_CELL_VERTICAL_ALIGNMENT.CENTER):
+def _shade_cell(cell, fill):
+    tc_pr = cell._tc.get_or_add_tcPr()
+    shd = tc_pr.find(qn('w:shd'))
+    if shd is None:
+        shd = OxmlElement('w:shd')
+        tc_pr.append(shd)
+    shd.set(qn('w:fill'), fill)
+
+
+def _set_cell_text(
+    cell,
+    text,
+    bold=False,
+    alignment=WD_ALIGN_PARAGRAPH.CENTER,
+    vertical_alignment=WD_CELL_VERTICAL_ALIGNMENT.CENTER,
+    fill=None,
+    font_color=None,
+):
     cell.vertical_alignment = vertical_alignment
+    if fill:
+        _shade_cell(cell, fill)
     cell.text = ''
     paragraph = cell.paragraphs[0]
     _set_docx_rtl(paragraph, alignment=alignment)
@@ -1398,6 +1417,8 @@ def _set_cell_text(cell, text, bold=False, alignment=WD_ALIGN_PARAGRAPH.CENTER, 
     run.font.name = 'Tahoma'
     run._element.rPr.rFonts.set(qn('w:cs'), 'Tahoma')
     run.font.size = Pt(10)
+    if font_color:
+        run.font.color.rgb = RGBColor.from_string(font_color)
 
 
 def _add_docx_heading(document, text, level=1):
@@ -1426,6 +1447,38 @@ def _format_docx_date(value):
     if not value:
         return ''
     return value.strftime('%Y/%m/%d')
+
+
+def _format_docx_datetime(value):
+    if not value:
+        return ''
+    return value.strftime('%Y/%m/%d %H:%M')
+
+
+def _format_docx_file(value):
+    if not value:
+        return 'غير مرفق'
+    name = getattr(value, 'name', '') or ''
+    return name.split('/')[-1] if name else 'مرفق'
+
+
+def _add_docx_label_value_table(document, rows, column_widths=None):
+    table = document.add_table(rows=0, cols=4)
+    table.alignment = WD_TABLE_ALIGNMENT.CENTER
+    table.style = 'Table Grid'
+    _set_table_rtl(table)
+    if column_widths:
+        _set_docx_table_column_widths(table, column_widths)
+
+    for row_values in rows:
+        cells = table.add_row().cells
+        _set_cell_text(cells[0], row_values[0], bold=True, fill='E8F3ED')
+        _set_cell_text(cells[1], row_values[1] or '-', alignment=WD_ALIGN_PARAGRAPH.RIGHT)
+        _set_cell_text(cells[2], row_values[2], bold=True, fill='E8F3ED')
+        _set_cell_text(cells[3], row_values[3] or '-', alignment=WD_ALIGN_PARAGRAPH.RIGHT)
+    if column_widths:
+        _set_docx_table_column_widths(table, column_widths)
+    return table
 
 
 def _add_docx_report_header(section):
@@ -1463,25 +1516,36 @@ def _build_evaluation_docx(evaluation):
     styles['Normal']._element.rPr.rFonts.set(qn('w:cs'), 'Tahoma')
     styles['Normal'].font.size = Pt(10)
 
-    _add_docx_heading(document, f'تقرير زيارة ميدانية إلى شركة: {evaluation.establishment.commercial_name}', 1)
+    establishment = evaluation.establishment
 
-    info_table = document.add_table(rows=0, cols=4)
-    info_table.alignment = WD_TABLE_ALIGNMENT.CENTER
-    info_table.style = 'Table Grid'
-    _set_table_rtl(info_table)
-    rows = [
+    _add_docx_heading(document, f'تقرير زيارة ميدانية إلى شركة: {establishment.commercial_name}', 1)
+
+    summary_rows = [
         ('مرجع التقرير', evaluation.report_reference_no, 'تاريخ الزيارة', _format_docx_date(evaluation.visit_date)),
-        ('اسم المنشأة', evaluation.establishment.commercial_name, 'رقم المنشأة', evaluation.establishment.establishment_no),
-        ('المحافظة', evaluation.establishment.governorate.name_ar, 'الولاية', evaluation.establishment.wilayat.name_ar),
+        ('اسم المنشأة', establishment.commercial_name, 'رقم المنشأة', establishment.establishment_no),
+        ('المحافظة', establishment.governorate.name_ar, 'الولاية', establishment.wilayat.name_ar),
         ('نسبة الامتثال', f'{evaluation.percentage}%', 'التصنيف', evaluation.get_classification_display()),
         ('المفتش / المقيم', evaluation.inspector.get_full_name() or evaluation.inspector.username, 'حالة التقييم', evaluation.get_approval_status_display()),
     ]
-    for row_values in rows:
-        cells = info_table.add_row().cells
-        _set_cell_text(cells[0], row_values[0], bold=True)
-        _set_cell_text(cells[1], row_values[1])
-        _set_cell_text(cells[2], row_values[2], bold=True)
-        _set_cell_text(cells[3], row_values[3])
+    _add_docx_label_value_table(document, summary_rows, [Inches(1.45), Inches(3.5), Inches(1.45), Inches(3.5)])
+
+    document.add_paragraph()
+    _add_docx_heading(document, 'بيانات المنشأة التفصيلية', 2)
+    establishment_rows = [
+        ('الرقم المرجعي', establishment.reference_no, 'رقم المنشأة', establishment.establishment_no),
+        ('الاسم التجاري', establishment.commercial_name, 'حالة المنشأة', establishment.get_status_display()),
+        ('النشاط الرئيسي', establishment.activity_type, 'رقم رخصة النشاط', establishment.license_no),
+        ('رقم السجل التجاري', establishment.commercial_reg, 'المحافظة', establishment.governorate.name_ar),
+        ('الولاية', establishment.wilayat.name_ar, 'مدير الجودة / سلامة الغذاء', establishment.manager_name),
+        ('رقم التواصل', establishment.contact_phone, 'البريد الإلكتروني', establishment.contact_email),
+        ('عدد الموظفين', establishment.employee_count, 'الطاقة الإنتاجية', establishment.production_capacity),
+        ('نوع المنتجات', establishment.product_types, 'الموقع المباشر', establishment.direct_location_url),
+        ('خط العرض', establishment.latitude, 'خط الطول', establishment.longitude),
+        ('تاريخ الإنشاء', _format_docx_datetime(establishment.created_at), 'تاريخ التحديث', _format_docx_datetime(establishment.updated_at)),
+        ('السجل التجاري', _format_docx_file(establishment.doc_commercial_register), 'الترخيص البلدي', _format_docx_file(establishment.doc_municipal_license)),
+        ('شهادات الجودة', _format_docx_file(establishment.doc_quality_certificates), 'مخططات المصنع', _format_docx_file(establishment.doc_factory_layout)),
+    ]
+    _add_docx_label_value_table(document, establishment_rows, [Inches(1.45), Inches(3.5), Inches(1.45), Inches(3.5)])
 
     document.add_paragraph()
     _add_docx_heading(document, 'البنود غير المستوفية والإجراءات التصحيحية', 2)
@@ -1504,7 +1568,7 @@ def _build_evaluation_docx(evaluation):
                 headers = ['البند', 'نص البند غير المستوفي', 'الإجراء التصحيحي', 'الصور']
                 column_widths = [Inches(0.55), Inches(4.15), Inches(3.7), Inches(1.65)]
             for index, header in enumerate(headers):
-                _set_cell_text(table.rows[0].cells[index], header, bold=True)
+                _set_cell_text(table.rows[0].cells[index], header, bold=True, fill='2F855A', font_color='FFFFFF')
             _set_docx_table_column_widths(table, column_widths)
             for item in items:
                 cells = table.add_row().cells
@@ -1548,13 +1612,15 @@ def _build_evaluation_docx(evaluation):
     _set_table_rtl(result_table)
     headers = ['الوصف', 'النسبة', 'التصنيف']
     for index, header in enumerate(headers):
-        _set_cell_text(result_table.rows[0].cells[index], header, bold=True)
+        _set_cell_text(result_table.rows[0].cells[index], header, bold=True, fill='2F855A', font_color='FFFFFF')
+    _set_docx_table_column_widths(result_table, [Inches(5.5), Inches(2), Inches(2)])
     status = getattr(evaluation, 'establishment_status', None)
     if status:
         row = result_table.add_row().cells
         _set_cell_text(row[0], status.get('description', '') if isinstance(status, dict) else getattr(status, 'description', ''))
         _set_cell_text(row[1], f"{evaluation.percentage}%")
         _set_cell_text(row[2], status.get('label', '') if isinstance(status, dict) else getattr(status, 'label', ''))
+        _set_docx_table_column_widths(result_table, [Inches(5.5), Inches(2), Inches(2)])
 
     # ملاحظات عامة (قبل فريق التقييم)
     if (evaluation.notes or '').strip():
@@ -1574,12 +1640,14 @@ def _build_evaluation_docx(evaluation):
         sign_table.style = 'Table Grid'
         _set_table_rtl(sign_table)
         for index, header in enumerate(['الاسم', 'المسمى الوظيفي', 'التوقيع']):
-            _set_cell_text(sign_table.rows[0].cells[index], header, bold=True)
+            _set_cell_text(sign_table.rows[0].cells[index], header, bold=True, fill='2F855A', font_color='FFFFFF')
+        _set_docx_table_column_widths(sign_table, [Inches(3.2), Inches(3.2), Inches(3.1)])
         for signature in context['signature_rows']:
             cells = sign_table.add_row().cells
             _set_cell_text(cells[0], signature['name'])
             _set_cell_text(cells[1], signature['job_title'])
             _set_cell_text(cells[2], '')
+        _set_docx_table_column_widths(sign_table, [Inches(3.2), Inches(3.2), Inches(3.1)])
 
     output = BytesIO()
     document.save(output)
