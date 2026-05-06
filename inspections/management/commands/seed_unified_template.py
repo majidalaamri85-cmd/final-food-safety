@@ -2,7 +2,7 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 
 from inspections.evaluation_template_data import EVALUATION_TEMPLATE_SECTIONS, REQUIRED_RECORDS
-from inspections.models import Criterion, EvaluationSection, RequiredRecord
+from inspections.models import Criterion, Evaluation, EvaluationItem, EvaluationSection, RequiredRecord
 
 
 class Command(BaseCommand):
@@ -39,7 +39,7 @@ class Command(BaseCommand):
                         'sort_order': item_index,
                         'text_ar': item['text'],
                         'text_en': '',
-                        'weight': item.get('weight', 1),
+                        'weight': 1,
                         'risk_level': item.get('risk', section_data.get('risk', 'medium')),
                         'is_active': True,
                     }
@@ -62,5 +62,11 @@ class Command(BaseCommand):
                     record.name_en = ''
                     record.is_active = True
                     record.save(update_fields=['name_en', 'is_active'])
+
+            EvaluationItem.objects.filter(status='compliant').update(score_awarded=1)
+            EvaluationItem.objects.exclude(status='compliant').update(score_awarded=0)
+            for evaluation in Evaluation.objects.all():
+                evaluation.calculate_results()
+                evaluation.save(update_fields=['total_points', 'percentage', 'classification', 'approval_status'])
 
         self.stdout.write('تم تحميل استمارة تقييم المنشآت الغذائية الجديدة مع 100 بند والسجلات المطلوبة بنجاح.')

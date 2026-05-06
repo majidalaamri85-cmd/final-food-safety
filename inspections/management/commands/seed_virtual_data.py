@@ -165,7 +165,7 @@ class Command(BaseCommand):
                 sort_order=1,
                 text_ar='توفر متطلبات الترخيص الأساسية',
                 text_en='Basic licensing requirements are available',
-                weight=5,
+                weight=1,
                 risk_level='high',
                 is_active=True,
             )

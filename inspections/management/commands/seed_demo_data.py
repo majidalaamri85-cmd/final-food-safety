@@ -17,8 +17,8 @@ class Command(BaseCommand):
         section1, _ = EvaluationSection.objects.get_or_create(name_ar='المتطلبات العامة', defaults={'name_en': 'General Requirements', 'sort_order': 1})
         section2, _ = EvaluationSection.objects.get_or_create(name_ar='النظافة والتعقيم', defaults={'name_en': 'Cleaning and Sanitation', 'sort_order': 2})
 
-        c1, _ = Criterion.objects.get_or_create(section=section1, code=1, defaults={'text_ar': 'توفر الترخيص والسجل التجاري', 'text_en': 'License and CR available', 'weight': 5, 'risk_level': 'high'})
-        c2, _ = Criterion.objects.get_or_create(section=section2, code=1, defaults={'text_ar': 'تنفيذ برنامج تنظيف وتطهير فعال', 'text_en': 'Cleaning program implemented', 'weight': 5, 'risk_level': 'critical'})
+        c1, _ = Criterion.objects.get_or_create(section=section1, code=1, defaults={'text_ar': 'توفر الترخيص والسجل التجاري', 'text_en': 'License and CR available', 'weight': 1, 'risk_level': 'high'})
+        c2, _ = Criterion.objects.get_or_create(section=section2, code=1, defaults={'text_ar': 'تنفيذ برنامج تنظيف وتطهير فعال', 'text_en': 'Cleaning program implemented', 'weight': 1, 'risk_level': 'critical'})
 
         RequiredRecord.objects.get_or_create(name_ar='سجل درجات الحرارة', defaults={'name_en': 'Temperature Log'})
         RequiredRecord.objects.get_or_create(name_ar='سجل التنظيف والتطهير', defaults={'name_en': 'Cleaning and Sanitation Log'})
