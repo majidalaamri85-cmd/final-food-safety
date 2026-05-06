@@ -34,6 +34,13 @@ class EstablishmentForm(forms.ModelForm):
                 raise forms.ValidationError('رقم المنشأة هذا مستخدم مسبقاً، اختر رقماً آخر.')
         return no
 
+    def clean(self):
+        cleaned_data = super().clean()
+        governorate = cleaned_data.get('governorate')
+        wilayat = cleaned_data.get('wilayat')
+        if governorate and wilayat and wilayat.governorate_id != governorate.id:
+            self.add_error('wilayat', 'الولاية المختارة لا تتبع المحافظة المحددة.')
+        return cleaned_data
     class Meta:
         model = Establishment
         fields = [
@@ -89,6 +96,13 @@ class EstablishmentForm(forms.ModelForm):
 
 
 class EvaluationForm(forms.ModelForm):
+    def clean(self):
+        cleaned_data = super().clean()
+        governorate = cleaned_data.get('governorate')
+        wilayat = cleaned_data.get('wilayat')
+        if governorate and wilayat and wilayat.governorate_id != governorate.id:
+            self.add_error('wilayat', 'الولاية المختارة لا تتبع المحافظة المحددة.')
+        return cleaned_data
     class Meta:
         model = Evaluation
         fields = ['establishment', 'visit_date', 'notes', 'corrective_action', 'follow_up_date']
@@ -120,6 +134,13 @@ class EvaluationHeaderForm(forms.ModelForm):
         if not self.instance.pk or not self.instance.visit_date:
             self.fields['visit_date'].initial = timezone.localdate()
 
+    def clean(self):
+        cleaned_data = super().clean()
+        governorate = cleaned_data.get('governorate')
+        wilayat = cleaned_data.get('wilayat')
+        if governorate and wilayat and wilayat.governorate_id != governorate.id:
+            self.add_error('wilayat', 'الولاية المختارة لا تتبع المحافظة المحددة.')
+        return cleaned_data
     class Meta:
         model = Evaluation
         fields = ['establishment', 'visit_date', 'notes']
@@ -145,6 +166,13 @@ class EvaluationItemForm(forms.ModelForm):
             ('observation', 'ملاحظة'),
         ]
 
+    def clean(self):
+        cleaned_data = super().clean()
+        governorate = cleaned_data.get('governorate')
+        wilayat = cleaned_data.get('wilayat')
+        if governorate and wilayat and wilayat.governorate_id != governorate.id:
+            self.add_error('wilayat', 'الولاية المختارة لا تتبع المحافظة المحددة.')
+        return cleaned_data
     class Meta:
         model = EvaluationItem
         fields = ['status', 'remarks', 'corrective_action']
@@ -156,6 +184,13 @@ class EvaluationItemForm(forms.ModelForm):
 
 
 class EvaluationRecordCheckForm(forms.ModelForm):
+    def clean(self):
+        cleaned_data = super().clean()
+        governorate = cleaned_data.get('governorate')
+        wilayat = cleaned_data.get('wilayat')
+        if governorate and wilayat and wilayat.governorate_id != governorate.id:
+            self.add_error('wilayat', 'الولاية المختارة لا تتبع المحافظة المحددة.')
+        return cleaned_data
     class Meta:
         model = EvaluationRecordCheck
         fields = ['is_available', 'remarks']
@@ -166,6 +201,13 @@ class EvaluationRecordCheckForm(forms.ModelForm):
 
 
 class EvaluationTeamMemberForm(forms.ModelForm):
+    def clean(self):
+        cleaned_data = super().clean()
+        governorate = cleaned_data.get('governorate')
+        wilayat = cleaned_data.get('wilayat')
+        if governorate and wilayat and wilayat.governorate_id != governorate.id:
+            self.add_error('wilayat', 'الولاية المختارة لا تتبع المحافظة المحددة.')
+        return cleaned_data
     class Meta:
         model = EvaluationTeamMember
         fields = ['full_name', 'job_title']
@@ -180,6 +222,13 @@ class EvaluationTeamMemberForm(forms.ModelForm):
 
 
 class CorrectiveActionForm(forms.ModelForm):
+    def clean(self):
+        cleaned_data = super().clean()
+        governorate = cleaned_data.get('governorate')
+        wilayat = cleaned_data.get('wilayat')
+        if governorate and wilayat and wilayat.governorate_id != governorate.id:
+            self.add_error('wilayat', 'الولاية المختارة لا تتبع المحافظة المحددة.')
+        return cleaned_data
     class Meta:
         model = CorrectiveActionLog
         fields = ['evaluation', 'criterion', 'title', 'details', 'assigned_to', 'due_date', 'status']
@@ -214,6 +263,13 @@ class QualificationFollowUpForm(forms.ModelForm):
         )
         self.fields['establishment'].label_from_instance = lambda obj: f'{obj.establishment_no} - {obj.commercial_name}'
 
+    def clean(self):
+        cleaned_data = super().clean()
+        governorate = cleaned_data.get('governorate')
+        wilayat = cleaned_data.get('wilayat')
+        if governorate and wilayat and wilayat.governorate_id != governorate.id:
+            self.add_error('wilayat', 'الولاية المختارة لا تتبع المحافظة المحددة.')
+        return cleaned_data
     class Meta:
         model = QualificationFollowUp
         fields = [
@@ -255,6 +311,13 @@ class QualificationFollowUpForm(forms.ModelForm):
 
 
 class HACCPFileForm(forms.ModelForm):
+    def clean(self):
+        cleaned_data = super().clean()
+        governorate = cleaned_data.get('governorate')
+        wilayat = cleaned_data.get('wilayat')
+        if governorate and wilayat and wilayat.governorate_id != governorate.id:
+            self.add_error('wilayat', 'الولاية المختارة لا تتبع المحافظة المحددة.')
+        return cleaned_data
     class Meta:
         model = HACCPFile
         fields = ['file_type', 'title', 'file', 'notes']
@@ -264,3 +327,4 @@ class HACCPFileForm(forms.ModelForm):
             'file': forms.ClearableFileInput(attrs={'class': 'form-control'}),
             'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'ملاحظات (اختياري)'}),
         }
+
