@@ -1473,9 +1473,9 @@ def _add_docx_label_value_table(document, rows, column_widths=None):
     for row_values in rows:
         cells = table.add_row().cells
         _set_cell_text(cells[0], row_values[0], bold=True, fill='E8F3ED')
-        _set_cell_text(cells[1], row_values[1] or '-', alignment=WD_ALIGN_PARAGRAPH.RIGHT)
+        _set_cell_text(cells[1], row_values[1] or '-', alignment=WD_ALIGN_PARAGRAPH.CENTER)
         _set_cell_text(cells[2], row_values[2], bold=True, fill='E8F3ED')
-        _set_cell_text(cells[3], row_values[3] or '-', alignment=WD_ALIGN_PARAGRAPH.RIGHT)
+        _set_cell_text(cells[3], row_values[3] or '-', alignment=WD_ALIGN_PARAGRAPH.CENTER)
     if column_widths:
         _set_docx_table_column_widths(table, column_widths)
     return table
