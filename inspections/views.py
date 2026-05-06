@@ -752,7 +752,7 @@ def evaluation_list(request):
 
 
 def create_evaluation_items(evaluation):
-    criteria = Criterion.objects.filter(is_active=True).select_related('section').order_by('section__sort_order', 'code')
+    criteria = Criterion.objects.filter(is_active=True).select_related('section').order_by('section__sort_order', 'sort_order')
     for criterion in criteria:
         EvaluationItem.objects.get_or_create(
             evaluation=evaluation,
@@ -766,6 +766,18 @@ def create_evaluation_items(evaluation):
             evaluation=evaluation,
             record=record,
         )
+
+
+def sync_evaluation_items_with_active_template(evaluation):
+    EvaluationItem.objects.filter(
+        evaluation=evaluation,
+        criterion__is_active=False,
+    ).delete()
+    EvaluationRecordCheck.objects.filter(
+        evaluation=evaluation,
+        record__is_active=False,
+    ).delete()
+    create_evaluation_items(evaluation)
 
 
 @login_required
@@ -807,6 +819,8 @@ def evaluation_update(request, pk):
     if profile and profile.role == 'inspector' and evaluation.inspector != request.user:
         messages.error(request, 'ليس لديك صلاحية لتعديل هذا التقييم.')
         return redirect('evaluation_list')
+
+    sync_evaluation_items_with_active_template(evaluation)
 
     queryset = EvaluationItem.objects.filter(
         evaluation=evaluation

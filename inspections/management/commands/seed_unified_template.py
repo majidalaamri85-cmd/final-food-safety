@@ -2,7 +2,14 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 
 from inspections.evaluation_template_data import EVALUATION_TEMPLATE_SECTIONS, REQUIRED_RECORDS
-from inspections.models import Criterion, Evaluation, EvaluationItem, EvaluationSection, RequiredRecord
+from inspections.models import (
+    Criterion,
+    Evaluation,
+    EvaluationItem,
+    EvaluationRecordCheck,
+    EvaluationSection,
+    RequiredRecord,
+)
 
 
 class Command(BaseCommand):
@@ -64,9 +71,38 @@ class Command(BaseCommand):
                     record.is_active = True
                     record.save(update_fields=['name_en', 'is_active'])
 
-            EvaluationItem.objects.filter(status='compliant').update(score_awarded=1)
-            EvaluationItem.objects.exclude(status='compliant').update(score_awarded=0)
+            active_criteria = list(
+                Criterion.objects
+                .filter(is_active=True)
+                .select_related('section')
+                .order_by('section__sort_order', 'sort_order')
+            )
+            active_records = list(RequiredRecord.objects.filter(is_active=True).order_by('name_ar'))
+
             for evaluation in Evaluation.objects.all():
+                EvaluationItem.objects.filter(
+                    evaluation=evaluation,
+                    criterion__is_active=False,
+                ).delete()
+                EvaluationRecordCheck.objects.filter(
+                    evaluation=evaluation,
+                    record__is_active=False,
+                ).delete()
+
+                for criterion in active_criteria:
+                    EvaluationItem.objects.get_or_create(
+                        evaluation=evaluation,
+                        criterion=criterion,
+                        defaults={'status': 'compliant'},
+                    )
+                for record in active_records:
+                    EvaluationRecordCheck.objects.get_or_create(
+                        evaluation=evaluation,
+                        record=record,
+                    )
+
+                evaluation.items.filter(status='compliant').update(score_awarded=1)
+                evaluation.items.exclude(status='compliant').update(score_awarded=0)
                 evaluation.calculate_results()
                 evaluation.save(update_fields=['total_points', 'percentage', 'classification', 'approval_status'])
 
