@@ -273,9 +273,9 @@ class Evaluation(models.Model):
 
     def calculate_results(self, items=None, record_checks=None):
         if items is None:
-            items = list(self.items.select_related('criterion'))
+            items = list(self.items.filter(criterion__is_active=True).select_related('criterion'))
         if record_checks is None:
-            record_checks = list(self.record_checks.select_related('record'))
+            record_checks = list(self.record_checks.filter(record__is_active=True).select_related('record'))
         max_points = sum(i.criterion.weight for i in items if i.status != 'na')
         max_points += sum(1 for record_check in record_checks if record_check.record.is_active)
         awarded = sum(Decimal(i.score_awarded) for i in items)
@@ -293,6 +293,7 @@ class Evaluation(models.Model):
             return False
         return self.items.filter(
             status='non_compliant',
+            criterion__is_active=True,
             criterion__risk_level__in=['high', 'critical'],
         ).exists()
 
@@ -302,6 +303,7 @@ class Evaluation(models.Model):
         return list(
             self.items.filter(
                 status='non_compliant',
+                criterion__is_active=True,
                 criterion__risk_level__in=['high', 'critical'],
             )
             .select_related('criterion')

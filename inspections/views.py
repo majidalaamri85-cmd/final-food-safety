@@ -479,7 +479,11 @@ def dashboard(request):
     total_evaluations = evaluations_qs.count()
     completed_evaluations = evaluations_qs.filter(approval_status='completed').count()
     open_actions = CorrectiveActionLog.objects.exclude(status='closed').filter(evaluation__in=evaluations_qs).count()
-    non_compliant_items = EvaluationItem.objects.filter(status='non_compliant', evaluation__in=evaluations_qs).count()
+    non_compliant_items = EvaluationItem.objects.filter(
+        status='non_compliant',
+        criterion__is_active=True,
+        evaluation__in=evaluations_qs,
+    ).count()
     avg_percentage = evaluations_qs.aggregate(avg=Avg('percentage'))['avg'] or 0
 
     by_governorate = list(
@@ -769,14 +773,6 @@ def create_evaluation_items(evaluation):
 
 
 def sync_evaluation_items_with_active_template(evaluation):
-    EvaluationItem.objects.filter(
-        evaluation=evaluation,
-        criterion__is_active=False,
-    ).delete()
-    EvaluationRecordCheck.objects.filter(
-        evaluation=evaluation,
-        record__is_active=False,
-    ).delete()
     create_evaluation_items(evaluation)
 
 
@@ -823,7 +819,8 @@ def evaluation_update(request, pk):
     sync_evaluation_items_with_active_template(evaluation)
 
     queryset = EvaluationItem.objects.filter(
-        evaluation=evaluation
+        evaluation=evaluation,
+        criterion__is_active=True,
     ).select_related(
         'criterion', 'criterion__section'
     ).order_by(
@@ -849,7 +846,8 @@ def evaluation_update(request, pk):
         can_delete=True,
     )
     record_queryset = EvaluationRecordCheck.objects.filter(
-        evaluation=evaluation
+        evaluation=evaluation,
+        record__is_active=True,
     ).select_related('record').order_by('record__name_ar', 'id')
     team_queryset = EvaluationTeamMember.objects.filter(
         evaluation=evaluation
@@ -1196,8 +1194,8 @@ def export_evaluations_excel(request):
     qs = Evaluation.objects.select_related(
         'establishment', 'establishment__governorate', 'establishment__wilayat', 'inspector'
     ).prefetch_related(
-        Prefetch('items', queryset=EvaluationItem.objects.filter(status='non_compliant').select_related('criterion')),
-        Prefetch('record_checks', queryset=EvaluationRecordCheck.objects.filter(is_available=False).select_related('record')),
+        Prefetch('items', queryset=EvaluationItem.objects.filter(status='non_compliant', criterion__is_active=True).select_related('criterion')),
+        Prefetch('record_checks', queryset=EvaluationRecordCheck.objects.filter(is_available=False, record__is_active=True).select_related('record')),
     ).all()
     _, qs = _apply_rbac(None, qs, profile)
     governorate_id = request.GET.get('governorate', '').strip()
@@ -1316,7 +1314,7 @@ def get_pdf_font_context():
 
 def _build_evaluation_report_context(evaluation):
     items_list = list(
-        EvaluationItem.objects.filter(evaluation=evaluation, status='non_compliant')
+        EvaluationItem.objects.filter(evaluation=evaluation, status='non_compliant', criterion__is_active=True)
         .select_related('criterion', 'criterion__section')
         .order_by('criterion__section__sort_order', 'criterion__sort_order', 'id')
     )

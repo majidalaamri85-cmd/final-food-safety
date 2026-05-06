@@ -80,15 +80,6 @@ class Command(BaseCommand):
             active_records = list(RequiredRecord.objects.filter(is_active=True).order_by('name_ar'))
 
             for evaluation in Evaluation.objects.all():
-                EvaluationItem.objects.filter(
-                    evaluation=evaluation,
-                    criterion__is_active=False,
-                ).delete()
-                EvaluationRecordCheck.objects.filter(
-                    evaluation=evaluation,
-                    record__is_active=False,
-                ).delete()
-
                 for criterion in active_criteria:
                     EvaluationItem.objects.get_or_create(
                         evaluation=evaluation,
