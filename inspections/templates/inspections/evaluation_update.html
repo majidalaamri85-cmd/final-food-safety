@@ -139,7 +139,6 @@
                 <div class="row g-3 align-items-start">
                   <div class="col-md-5">
                     <div class="item-text">{{ form.instance.criterion.code }} {{ form.instance.criterion.text_ar }}</div>
-                    <div class="small-muted mt-1">الوزن: {{ form.instance.criterion.weight }}</div>
                     <div class="criterion-risk-note {{ form.instance.criterion.risk_level }}">
                       {% if form.instance.criterion.risk_level == 'high' %}
                         (مستوى الخطورة عالي)
@@ -225,7 +224,6 @@
               <div class="row g-3 align-items-center">
                 <div class="col-md-5">
                   <div class="item-text">{{ form.instance.record.name_ar }}</div>
-                  <div class="small-muted mt-1">درجة السجل: ١ عند التوفر</div>
                 </div>
                 <div class="col-md-2">
                   <label class="form-label d-block">متوفر</label>
