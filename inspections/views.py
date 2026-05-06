@@ -777,6 +777,7 @@ def sync_evaluation_items_with_active_template(evaluation):
 
 
 @login_required
+@login_required
 def evaluation_create(request):
     profile = _get_profile(request.user)
     establishments_qs = Establishment.objects.all()
@@ -787,20 +788,102 @@ def evaluation_create(request):
         messages.error(request, 'لا توجد منشآت متاحة لإنشاء تقييم. يرجى إضافة منشأة أولاً.')
         return redirect('establishment_create')
 
-    obj = Evaluation.objects.create(
-        establishment=default_establishment,
-        inspector=request.user,
-        visit_date=timezone.localdate(),
-    )
-    create_evaluation_items(obj)
-    EvaluationActivityLog.objects.create(
-        evaluation=obj,
-        user=request.user,
-        action='إنشاء تقييم',
-        notes='تم إنشاء مسودة تقييم وفتح صفحة البنود مباشرة.',
-    )
-    messages.success(request, 'تم فتح تقييم جديد. يمكنك الآن اختيار المنشأة والتاريخ وإكمال البنود في نفس الصفحة.')
-    return redirect('evaluation_update', pk=obj.pk)
+    if request.method == 'POST':
+        # Handle form submission
+        establishment_id = request.POST.get('establishment')
+        visit_date = request.POST.get('visit_date')
+        notes = request.POST.get('notes', '')
+        
+        try:
+            establishment = Establishment.objects.get(id=establishment_id)
+        except Establishment.DoesNotExist:
+            messages.error(request, 'المنشأة المختارة غير موجودة.')
+            return redirect('evaluation_create')
+        
+        # Create evaluation
+        evaluation = Evaluation.objects.create(
+            establishment=establishment,
+            inspector=request.user,
+            visit_date=visit_date or timezone.localdate(),
+            notes=notes,
+        )
+        create_evaluation_items(evaluation)
+        
+        # Process evaluation items
+        all_items = EvaluationItem.objects.filter(evaluation=evaluation).select_related('criterion')
+        for item in all_items:
+            status = request.POST.get(f'item_{item.criterion_id}', 'compliant')
+            item.status = status
+            item.remarks = request.POST.get(f'remarks_{item.criterion_id}', '')
+            item.corrective_action = request.POST.get(f'corrective_{item.criterion_id}', '')
+            item.save()
+            
+            # Handle image uploads
+            image_file = request.FILES.get(f'image_{item.criterion_id}')
+            if image_file:
+                EvaluationImage.objects.create(
+                    evaluation=evaluation,
+                    criterion=item.criterion,
+                    image=image_file,
+                )
+        
+        # Calculate results
+        evaluation.calculate_results(items=list(all_items))
+        
+        # Check if save as draft
+        if 'save_as_draft' in request.POST:
+            evaluation.approval_status = 'draft'
+            evaluation.save(update_fields=['approval_status'])
+            messages.success(request, 'تم حفظ التقييم كمسودة.')
+        else:
+            evaluation.approval_status = 'completed'
+            evaluation.save(update_fields=['approval_status'])
+            messages.success(request, f'تم اعتماد التقييم بنجاح. النسبة: {evaluation.percentage}% - التصنيف: {evaluation.get_classification_display()}')
+        
+        EvaluationActivityLog.objects.create(
+            evaluation=evaluation,
+            user=request.user,
+            action='إنشاء وحفظ تقييم',
+            notes='تم إنشاء التقييم من استمارة التقييم المتقدمة.',
+        )
+        return redirect('evaluation_list')
+    
+    # GET request - show form
+    from django.forms import ModelForm, Form
+    from django import forms as dj_forms
+    
+    class SimpleEvaluationForm(ModelForm):
+        establishment = dj_forms.ModelChoiceField(
+            queryset=establishments_qs,
+            label='المنشأة',
+            widget=dj_forms.Select(attrs={'class': 'form-control'})
+        )
+        
+        class Meta:
+            model = Evaluation
+            fields = ['establishment', 'visit_date', 'notes']
+            labels = {
+                'visit_date': 'تاريخ التقييم',
+                'notes': 'الملاحظات العامة',
+            }
+    
+    form = SimpleEvaluationForm()
+    
+    # Get sections and criteria
+    sections = EvaluationSection.objects.filter(
+        criteria__is_active=True
+    ).distinct().prefetch_related(
+        Prefetch(
+            'criteria',
+            Criterion.objects.filter(is_active=True).order_by('sort_order', 'code')
+        )
+    ).order_by('sort_order', 'name_ar')
+    
+    return render(request, 'inspections/evaluation_create.html', {
+        'form': form,
+        'establishment': default_establishment,
+        'sections': sections,
+    })
 
 
 @login_required

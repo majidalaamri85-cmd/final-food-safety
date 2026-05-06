@@ -1,28 +1,484 @@
 {% extends 'base.html' %}
-{% block title %}إنشاء تقييم{% endblock %}
-{% block breadcrumb %}<li class="breadcrumb-item active" aria-current="page">إنشاء تقييم</li>{% endblock %}
+{% load static %}
+{% block title %}استمارة تقييم منشأة غذائية{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'establishment_list' %}">المنشآت</a></li>
+<li class="breadcrumb-item"><a href="{% url 'evaluation_list' %}">التقييمات</a></li>
+<li class="breadcrumb-item active" aria-current="page">إنشاء تقييم</li>
+{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <h1 class="mb-0">إنشاء تقييم جديد</h1>
-  <a class="btn btn-outline-secondary" href="/evaluations/">رجوع</a>
-</div>
-<div class="card shadow-sm">
-  <div class="card-body">
-    <form method="post">
+
+<style>
+  .evaluation-header {
+    background: linear-gradient(135deg, #138a4c, #0f6b4b);
+    color: white;
+    padding: 20px;
+    border-radius: 12px 12px 0 0;
+    margin-bottom: 0;
+  }
+
+  .evaluation-header h1 {
+    margin: 0;
+    font-size: 24px;
+  }
+
+  .evaluation-container {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    overflow: hidden;
+  }
+
+  .evaluation-content {
+    padding: 20px;
+  }
+
+  .section-header {
+    background: #e8f5ee;
+    color: #0f6b4b;
+    padding: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 17px;
+    border-top: 1px solid #ddd;
+    margin-top: 12px;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background 0.3s;
+  }
+
+  .section-header:hover {
+    background: #d0e8e0;
+  }
+
+  .section-header .toggle-icon {
+    font-size: 14px;
+  }
+
+  .section-content {
+    display: none;
+    padding: 15px;
+    background: #fff;
+    border-bottom: 1px solid #ddd;
+  }
+
+  .section-content.active {
+    display: block;
+  }
+
+  .evaluation-item {
+    border-bottom: 1px solid #eee;
+    padding: 15px 0;
+  }
+
+  .evaluation-item:last-child {
+    border-bottom: none;
+  }
+
+  .item-question {
+    font-weight: bold;
+    margin-bottom: 10px;
+  }
+
+  .item-options {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+  }
+
+  .item-options label {
+    font-weight: normal;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .item-options input {
+    width: auto;
+  }
+
+  .non-compliance-section {
+    display: none;
+    background: #fff8f8;
+    border: 1px solid #f0b4b4;
+    padding: 12px;
+    border-radius: 8px;
+    margin-top: 10px;
+  }
+
+  .non-compliance-section.active {
+    display: block;
+  }
+
+  .non-compliance-section label {
+    font-weight: bold;
+    margin-top: 10px;
+    margin-bottom: 5px;
+    display: block;
+  }
+
+  .non-compliance-section textarea,
+  .non-compliance-section input[type="file"] {
+    width: 100%;
+    padding: 9px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    box-sizing: border-box;
+    font-family: inherit;
+    margin-bottom: 10px;
+  }
+
+  .non-compliance-section textarea {
+    min-height: 70px;
+  }
+
+  .result-box {
+    background: #f0faf5;
+    border: 1px solid #b7dfc9;
+    padding: 15px;
+    border-radius: 10px;
+    margin-top: 20px;
+    font-weight: bold;
+  }
+
+  .buttons-group {
+    margin-top: 25px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .buttons-group button,
+  .buttons-group a {
+    border: none;
+    padding: 12px 22px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 15px;
+    font-family: inherit;
+    transition: opacity 0.2s;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .buttons-group button:hover,
+  .buttons-group a:hover {
+    opacity: 0.85;
+  }
+
+  .btn-submit {
+    background: #0f6b4b;
+    color: white;
+  }
+
+  .btn-draft {
+    background: #777;
+    color: white;
+  }
+
+  .btn-calculate {
+    background: #1d7ed0;
+    color: white;
+  }
+
+  .btn-back {
+    background: #6c757d;
+    color: white;
+  }
+
+  .establishment-info {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+  }
+
+  .establishment-info h5 {
+    margin-top: 0;
+    color: #0f6b4b;
+  }
+
+  .info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+  }
+
+  .info-item {
+    font-size: 14px;
+  }
+
+  .info-label {
+    font-weight: bold;
+    color: #555;
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    margin-bottom: 25px;
+  }
+
+  .form-grid > div {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .form-grid label {
+    font-weight: bold;
+    margin-bottom: 5px;
+    display: block;
+  }
+
+  .form-grid input,
+  .form-grid select {
+    padding: 9px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    box-sizing: border-box;
+    font-family: inherit;
+  }
+
+  .form-grid input:focus,
+  .form-grid select:focus {
+    outline: none;
+    border-color: #0f6b4b;
+    box-shadow: 0 0 0 3px rgba(15, 107, 75, 0.1);
+  }
+
+  @media (max-width: 768px) {
+    .form-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .item-options {
+      flex-direction: column;
+    }
+  }
+</style>
+
+<div class="evaluation-container">
+  <div class="evaluation-header">
+    <h1>استمارة تقييم منشأة غذائية</h1>
+    <p style="margin: 5px 0 0 0; font-size: 14px;">مركز سلامة وجودة الغذاء</p>
+  </div>
+
+  <div class="evaluation-content">
+    <form method="post" id="evaluationForm" enctype="multipart/form-data">
       {% csrf_token %}
-      <div class="row g-3">
-        {% for field in form %}
-          <div class="{% if field.name == 'notes' or field.name == 'corrective_action' %}col-12{% else %}col-md-6{% endif %}">
-            <label class="form-label">{{ field.label }}</label>
-            {{ field }}
-            {% if field.errors %}<div class="text-danger small">{{ field.errors }}</div>{% endif %}
+
+      <!-- Establishment Section -->
+      <h2 style="color: #0f6b4b; border-bottom: 2px solid #0f6b4b; padding-bottom: 8px;">بيانات المنشأة</h2>
+
+      <div class="form-grid">
+        <div>
+          <label for="{{ form.establishment.id_for_label }}">{{ form.establishment.label }}</label>
+          {{ form.establishment }}
+          {% if form.establishment.errors %}<div class="text-danger small">{{ form.establishment.errors }}</div>{% endif %}
+        </div>
+        <div>
+          <label for="{{ form.visit_date.id_for_label }}">{{ form.visit_date.label }}</label>
+          {{ form.visit_date }}
+          {% if form.visit_date.errors %}<div class="text-danger small">{{ form.visit_date.errors }}</div>{% endif %}
+        </div>
+        <div class="form-grid" style="grid-column: 1/-1;">
+          <label for="{{ form.notes.id_for_label }}">{{ form.notes.label }}</label>
+          {{ form.notes }}
+          {% if form.notes.errors %}<div class="text-danger small">{{ form.notes.errors }}</div>{% endif %}
+        </div>
+      </div>
+
+      <!-- Evaluation Criteria Sections -->
+      <h2 style="color: #0f6b4b; border-bottom: 2px solid #0f6b4b; padding-bottom: 8px; margin-top: 30px;">بنود التقييم</h2>
+
+      <div id="sectionsContainer">
+        {% for section in sections %}
+        <div class="section">
+          <div class="section-header" onclick="toggleSection(this)">
+            <span>{{ section.name_ar }}</span>
+            <span class="toggle-icon">▼</span>
           </div>
+          <div class="section-content">
+            {% for criterion in section.criteria.all %}
+            <div class="evaluation-item">
+              <div class="item-question">
+                {{ criterion.code }}. {{ criterion.text_ar }}
+              </div>
+
+              <div class="item-options">
+                <label>
+                  <input type="radio" name="item_{{ criterion.id }}" value="compliant" 
+                    onclick="handleItemChange({{ criterion.id }}, 'compliant')">
+                  مستوفي
+                </label>
+                <label>
+                  <input type="radio" name="item_{{ criterion.id }}" value="non_compliant" 
+                    onclick="handleItemChange({{ criterion.id }}, 'non_compliant')">
+                  غير مستوفي
+                </label>
+                <label>
+                  <input type="radio" name="item_{{ criterion.id }}" value="na" 
+                    onclick="handleItemChange({{ criterion.id }}, 'na')">
+                  لا ينطبق
+                </label>
+              </div>
+
+              <div class="non-compliance-section" id="nonCompliance_{{ criterion.id }}">
+                <label>الملاحظات</label>
+                <textarea name="remarks_{{ criterion.id }}" placeholder="اكتب الملاحظة هنا"></textarea>
+
+                <label>الإجراء التصحيحي المطلوب</label>
+                <textarea name="corrective_{{ criterion.id }}" placeholder="اكتب الإجراء التصحيحي المطلوب من المنشأة"></textarea>
+
+                <label>إرفاق صورة المخالفة</label>
+                <input type="file" name="image_{{ criterion.id }}" accept="image/*">
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
         {% endfor %}
       </div>
-      <div class="mt-4 d-flex gap-2">
-        <button type="submit" class="btn btn-success">إنشاء التقييم</button>
+
+      <div class="result-box">
+        النتيجة: <span id="score">0%</span><br>
+        التصنيف: <span id="classification">لم يتم الحساب</span>
+      </div>
+
+      <!-- Hidden fields for results -->
+      <input type="hidden" name="percentage" id="percentageField" value="0">
+      <input type="hidden" name="classification" id="classificationField" value="acceptable">
+
+      <div class="buttons-group">
+        <button type="button" class="btn-calculate" onclick="calculateScore()">
+          <i class="fa-solid fa-calculator me-1"></i>حساب النتيجة
+        </button>
+        <button type="button" class="btn-draft" onclick="saveDraft()">
+          <i class="fa-solid fa-floppy-disk me-1"></i>حفظ كمسودة
+        </button>
+        <button type="submit" class="btn-submit">
+          <i class="fa-solid fa-check me-1"></i>اعتماد التقييم
+        </button>
+        <a href="{% url 'evaluation_list' %}" class="btn-back">
+          <i class="fa-solid fa-arrow-right me-1"></i>رجوع
+        </a>
       </div>
     </form>
   </div>
 </div>
+
+<script>
+  function toggleSection(header) {
+    const content = header.nextElementSibling;
+    const icon = header.querySelector('.toggle-icon');
+    content.classList.toggle('active');
+    icon.textContent = content.classList.contains('active') ? '▲' : '▼';
+  }
+
+  function handleItemChange(criterionId, value) {
+    const nonComplianceBox = document.getElementById('nonCompliance_' + criterionId);
+    if (value === 'non_compliant') {
+      nonComplianceBox.classList.add('active');
+    } else {
+      nonComplianceBox.classList.remove('active');
+    }
+  }
+
+  function calculateScore() {
+    let totalApplicable = 0;
+    let totalScore = 0;
+    let itemCount = 0;
+
+    // Get all radio buttons with name starting with 'item_'
+    const itemRadios = document.querySelectorAll('input[type="radio"][name^="item_"]');
+    const checkedItems = new Set();
+
+    itemRadios.forEach(radio => {
+      const itemName = radio.name;
+      if (!checkedItems.has(itemName)) {
+        const checked = document.querySelector(`input[name="${itemName}"]:checked`);
+        if (checked) {
+          checkedItems.add(itemName);
+          const value = checked.value;
+          
+          if (value !== 'na') {
+            totalApplicable++;
+            if (value === 'compliant') {
+              totalScore++;
+            }
+          }
+        }
+      }
+    });
+
+    let percentage = totalApplicable > 0
+      ? Math.round((totalScore / totalApplicable) * 100)
+      : 0;
+
+    document.getElementById('score').innerText = percentage + '%';
+    document.getElementById('percentageField').value = percentage;
+    
+    const classification = getClassification(percentage);
+    document.getElementById('classification').innerText = classification.label;
+    document.getElementById('classificationField').value = classification.value;
+  }
+
+  function getClassification(score) {
+    if (score >= 86) {
+      return {
+        label: 'ممتاز - مستوفي للحصول على شهادة ضبط الجودة',
+        value: 'excellent'
+      };
+    } else if (score >= 70) {
+      return {
+        label: 'جيد - مستوفي مع وجود فرص للتحسين',
+        value: 'good'
+      };
+    } else if (score >= 41) {
+      return {
+        label: 'مقبول - يحتاج تأهيل ومزيد من التحسين',
+        value: 'acceptable'
+      };
+    } else {
+      return {
+        label: 'ضعيف - إيقاف الإنتاج لحين استيفاء المتطلبات',
+        value: 'weak'
+      };
+    }
+  }
+
+  function saveDraft() {
+    // Add hidden field to indicate draft mode
+    const draftField = document.createElement('input');
+    draftField.type = 'hidden';
+    draftField.name = 'save_as_draft';
+    draftField.value = 'true';
+    document.getElementById('evaluationForm').appendChild(draftField);
+    document.getElementById('evaluationForm').submit();
+  }
+
+  // Initialize: set initial state on page load
+  document.addEventListener('DOMContentLoaded', function() {
+    // Auto-expand first section
+    const firstHeader = document.querySelector('.section-header');
+    if (firstHeader) {
+      const firstContent = firstHeader.nextElementSibling;
+      firstContent.classList.add('active');
+      firstHeader.querySelector('.toggle-icon').textContent = '▲';
+    }
+
+    // Set default establishment if provided
+    const establishmentSelect = document.querySelector('select[name="establishment"]');
+    if (establishmentSelect && establishmentSelect.options.length > 0) {
+      establishmentSelect.selectedIndex = 0;
+    }
+  });
+</script>
+
 {% endblock %}
