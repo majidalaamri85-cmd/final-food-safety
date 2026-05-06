@@ -10,6 +10,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         active_codes = set()
+        total_items = sum(len(section_data['items']) for section_data in EVALUATION_TEMPLATE_SECTIONS)
 
         with transaction.atomic():
             for section_data in EVALUATION_TEMPLATE_SECTIONS:
@@ -69,4 +70,4 @@ class Command(BaseCommand):
                 evaluation.calculate_results()
                 evaluation.save(update_fields=['total_points', 'percentage', 'classification', 'approval_status'])
 
-        self.stdout.write('تم تحميل استمارة تقييم المنشآت الغذائية الجديدة مع 100 بند والسجلات المطلوبة بنجاح.')
+        self.stdout.write(f'Seeded food establishment evaluation template with {total_items} items and required records.')
