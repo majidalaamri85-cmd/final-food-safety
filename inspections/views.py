@@ -1371,6 +1371,23 @@ def _set_table_rtl(table):
         tblPr.append(bidi)
 
 
+def _set_docx_table_column_widths(table, widths):
+    table.autofit = False
+    for row in table.rows:
+        for index, width in enumerate(widths):
+            if index >= len(row.cells):
+                continue
+            cell = row.cells[index]
+            cell.width = width
+            tc_pr = cell._tc.get_or_add_tcPr()
+            tc_w = tc_pr.find(qn('w:tcW'))
+            if tc_w is None:
+                tc_w = OxmlElement('w:tcW')
+                tc_pr.append(tc_w)
+            tc_w.set(qn('w:w'), str(int(width.inches * 1440)))
+            tc_w.set(qn('w:type'), 'dxa')
+
+
 def _set_cell_text(cell, text, bold=False, alignment=WD_ALIGN_PARAGRAPH.CENTER, vertical_alignment=WD_CELL_VERTICAL_ALIGNMENT.CENTER):
     cell.vertical_alignment = vertical_alignment
     cell.text = ''
@@ -1482,10 +1499,13 @@ def _build_evaluation_docx(evaluation):
             _set_table_rtl(table)
             if has_remarks:
                 headers = ['البند', 'نص البند غير المستوفي', 'الملاحظات', 'الإجراء التصحيحي', 'الصور']
+                column_widths = [Inches(0.55), Inches(3.2), Inches(1.75), Inches(3.1), Inches(1.45)]
             else:
                 headers = ['البند', 'نص البند غير المستوفي', 'الإجراء التصحيحي', 'الصور']
+                column_widths = [Inches(0.55), Inches(4.15), Inches(3.7), Inches(1.65)]
             for index, header in enumerate(headers):
                 _set_cell_text(table.rows[0].cells[index], header, bold=True)
+            _set_docx_table_column_widths(table, column_widths)
             for item in items:
                 cells = table.add_row().cells
                 _set_cell_text(cells[0], item.criterion.code)
@@ -1518,6 +1538,7 @@ def _build_evaluation_docx(evaluation):
                             caption.add_run(image.caption)
                 else:
                     _set_cell_text(image_cell, '-')
+            _set_docx_table_column_widths(table, column_widths)
 
     # نتيجة التقييم (جدول)
     _add_docx_heading(document, 'نتيجة التقييم', 2)
