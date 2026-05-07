@@ -1013,25 +1013,28 @@ def evaluation_update(request, pk):
                     qf.evaluation = evaluation
                     qf.save(update_fields=['current_status', 'evaluation'])
 
-                # إنشاء خطة تأهيل تلقائية للبنود غير المستوفية
+                # مزامنة ملاحظات ملفات HACCP الموجودة فقط (حقل الملف إلزامي ولا يمكن إنشاء سجل بدون ملف)
                 for item in all_items:
                     if item.status == 'non_compliant':
-                        # ربط كل بند غير مستوفي بخطة التأهيل
-                        # إضافة بند إلى خطة HACCP إذا كان البند متعلقاً بها
                         criterion_text = item.criterion.text_ar
                         if 'تتبع' in criterion_text or 'تحليل مخاطر' in criterion_text or 'سجلات' in criterion_text or 'نظافة' in criterion_text:
-                            HACCPFile.objects.get_or_create(
-                                establishment=evaluation.establishment,
-                                file_type='prps' if 'نظافة' in criterion_text else (
-                                    'traceability' if 'تتبع' in criterion_text else (
-                                        'records' if 'سجلات' in criterion_text else 'hazard_analysis'
-                                    )
-                                ),
-                                title=criterion_text,
-                                defaults={
-                                    'notes': f'تم إنشاؤه تلقائيًا بناءً على بند غير مستوفي في التقييم رقم {evaluation.pk}',
-                                }
+                            haccp_file_type = 'prps' if 'نظافة' in criterion_text else (
+                                'traceability' if 'تتبع' in criterion_text else (
+                                    'records' if 'سجلات' in criterion_text else 'hazard_analysis'
+                                )
                             )
+                            related_haccp_file = HACCPFile.objects.filter(
+                                establishment=evaluation.establishment,
+                                file_type=haccp_file_type,
+                                title=criterion_text,
+                            ).first()
+                            if related_haccp_file:
+                                auto_note = f'تم ربطه تلقائيًا بناءً على بند غير مستوفي في التقييم رقم {evaluation.pk}'
+                                if auto_note not in (related_haccp_file.notes or ''):
+                                    related_haccp_file.notes = '\n'.join(
+                                        part for part in [related_haccp_file.notes.strip(), auto_note] if part
+                                    )
+                                    related_haccp_file.save(update_fields=['notes'])
 
             # مسح كاش PDF بعد الحفظ حتى لا يُعرض تقرير قديم
             cache.delete(f'pdf_bytes:eval:{evaluation.pk}')
