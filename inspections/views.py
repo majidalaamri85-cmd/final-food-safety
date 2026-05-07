@@ -989,14 +989,12 @@ def evaluation_update(request, pk):
                 # محرك التأهيل الذكي وربط البنود غير المستوفية وخطة HACCP
                 from inspections.models import QualificationFollowUp, HACCPFile
                 pct = float(evaluation.percentage)
-                if pct >= 86:
-                    qual_status = 'qualified'
-                elif pct >= 70:
-                    qual_status = 'conditionally_qualified'
+                if pct >= 70:
+                    qual_status = 'completed'
                 elif pct >= 41:
                     qual_status = 'in_progress'
                 else:
-                    qual_status = 'not_qualified'
+                    qual_status = 'stalled'
 
                 qf, created = QualificationFollowUp.objects.get_or_create(
                     establishment=evaluation.establishment,
