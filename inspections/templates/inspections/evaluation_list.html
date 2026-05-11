@@ -9,6 +9,11 @@
     <div class="sub">فلترة التقارير بحسب المحافظة والولاية ودرجة التصنيف</div>
   </div>
   <div class="d-flex gap-2 flex-wrap">
+    {% if request.user.is_superuser %}
+      <a class="btn btn-outline-warning" href="{% url 'download_reports_backup' %}" title="تنزيل نسخة احتياطية للتقارير مع الصور">
+        <i class="fa-solid fa-box-archive me-1"></i>نسخة احتياطية
+      </a>
+    {% endif %}
     <a class="btn btn-outline-success" href="/exports/evaluations.xlsx?governorate={{ selected_governorate }}&wilayat={{ selected_wilayat }}&classification={{ selected_classification }}&activity={{ selected_activity }}&q={{ q }}">
       <i class="fa-solid fa-file-excel me-1"></i>تصدير إكسل
     </a>
@@ -118,6 +123,12 @@
                 <a class="btn btn-sm btn-outline-success" href="/evaluations/{{ e.id }}/edit/" title="فتح التقييم"><i class="fa-solid fa-pen-to-square"></i><span class="d-none d-md-inline ms-1">تعديل</span></a>
                 <a class="btn btn-sm btn-outline-danger" href="/evaluations/{{ e.id }}/pdf/" target="_blank" title="تقرير PDF"><i class="fa-solid fa-file-pdf"></i><span class="d-none d-md-inline ms-1">PDF</span></a>
                 <a class="btn btn-sm btn-outline-primary" href="/evaluations/{{ e.id }}/word/" title="تنزيل Word"><i class="fa-solid fa-file-word"></i><span class="d-none d-md-inline ms-1">Word</span></a>
+                <form method="post" action="{% url 'evaluation_delete' e.id %}" class="d-inline" onsubmit="return confirm('هل أنت متأكد من حذف هذا التقرير؟ سيتم حذف الصور المرتبطة به أيضًا.');">
+                  {% csrf_token %}
+                  <button class="btn btn-sm btn-outline-dark" type="submit" title="حذف التقرير">
+                    <i class="fa-solid fa-trash"></i><span class="d-none d-md-inline ms-1">حذف</span>
+                  </button>
+                </form>
               </div>
             </td>
           </tr>

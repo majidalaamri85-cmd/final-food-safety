@@ -27,6 +27,7 @@ def establishment_detail(request, pk):
 import os
 import hashlib
 import tempfile
+import zipfile
 from collections import OrderedDict
 from io import BytesIO
 
@@ -39,11 +40,12 @@ from django.core.cache import cache
 from django.core.paginator import Paginator
 from django.db.models import Avg, Count, OuterRef, Prefetch, Q, Subquery
 from django.forms import modelformset_factory
-from django.http import HttpResponse
+from django.http import FileResponse, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import get_template
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
+from django.views.decorators.http import require_POST
 from openpyxl import Workbook
 from docx import Document
 from docx.enum.section import WD_ORIENT
@@ -667,6 +669,88 @@ def establishment_create(request):
         'wilayats': reference_data['wilayats'],
         'isic_activities': ISIC4_FOOD_ACTIVITIES,
     })
+
+
+@login_required
+def download_database_backup(request):
+    if not request.user.is_superuser:
+        messages.error(request, 'غير مسموح لك بتنزيل النسخة الاحتياطية.')
+        return redirect('home')
+
+    db_path = settings.DATABASES.get('default', {}).get('NAME')
+    if not db_path or not os.path.exists(db_path):
+        messages.error(request, 'ملف قاعدة البيانات غير موجود.')
+        return redirect('establishment_list')
+
+    timestamp = timezone.now().strftime('%Y%m%d_%H%M%S')
+    backup_name = f'food_safety_backup_{timestamp}.sqlite3'
+
+    return FileResponse(
+        open(db_path, 'rb'),
+        as_attachment=True,
+        filename=backup_name,
+        content_type='application/x-sqlite3',
+    )
+
+
+@login_required
+def download_reports_backup(request):
+    if not request.user.is_superuser:
+        messages.error(request, 'غير مسموح لك بتنزيل النسخة الاحتياطية.')
+        return redirect('home')
+
+    db_path = settings.DATABASES.get('default', {}).get('NAME')
+    if not db_path or not os.path.exists(db_path):
+        messages.error(request, 'ملف قاعدة البيانات غير موجود.')
+        return redirect('evaluation_list')
+
+    timestamp = timezone.now().strftime('%Y%m%d_%H%M%S')
+    backup_name = f'food_safety_reports_backup_{timestamp}.zip'
+    media_root = getattr(settings, 'MEDIA_ROOT', '')
+
+    zip_buffer = BytesIO()
+    with zipfile.ZipFile(zip_buffer, 'w', compression=zipfile.ZIP_DEFLATED) as backup_zip:
+        backup_zip.write(db_path, arcname=f'database/{os.path.basename(db_path)}')
+
+        if media_root:
+            for image in EvaluationImage.objects.only('image').iterator():
+                if not image.image:
+                    continue
+                file_name = image.image.name
+                file_path = os.path.join(media_root, file_name)
+                if os.path.exists(file_path):
+                    backup_zip.write(file_path, arcname=f'media/{file_name}')
+
+    zip_buffer.seek(0)
+    return FileResponse(
+        zip_buffer,
+        as_attachment=True,
+        filename=backup_name,
+        content_type='application/zip',
+    )
+
+
+@login_required
+@require_POST
+def evaluation_delete(request, pk):
+    profile = _get_profile(request.user)
+    allowed_qs = Evaluation.objects.all()
+    _, allowed_qs = _apply_rbac(None, allowed_qs, profile)
+    evaluation = get_object_or_404(allowed_qs, pk=pk)
+
+    establishment_name = evaluation.establishment.commercial_name
+    visit_date = evaluation.visit_date
+
+    for image in evaluation.images.only('image').iterator():
+        if image.image:
+            image.image.delete(save=False)
+
+    evaluation.delete()
+    messages.success(
+        request,
+        f'تم حذف التقرير للمنشأة {establishment_name} بتاريخ {visit_date:%Y/%m/%d}.',
+    )
+    return redirect('evaluation_list')
 
 
 @login_required
