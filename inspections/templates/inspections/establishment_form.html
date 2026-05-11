@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+﻿{% extends 'base.html' %}
 {% block title %}إضافة منشأة{% endblock %}
 {% block breadcrumb %}
 <li class="breadcrumb-item"><a href="{% url 'establishment_list' %}">المنشآت</a></li>
@@ -10,9 +10,16 @@
     <h1 class="mb-1">إضافة منشأة جديدة</h1>
     <div class="sub">سجل بيانات المنشأة الأساسية والتشغيلية والمستندات والموقع.</div>
   </div>
-  <a class="btn btn-outline-secondary" href="{% url 'establishment_list' %}">
-    <i class="fa-solid fa-arrow-right me-1"></i>رجوع
-  </a>
+  <div class="d-flex gap-2">
+    {% if request.user.is_superuser %}
+      <a class="btn btn-outline-success" href="{% url 'download_database_backup' %}">
+        <i class="fa-solid fa-download me-1"></i>تنزيل نسخة احتياطية
+      </a>
+    {% endif %}
+    <a class="btn btn-outline-secondary" href="{% url 'establishment_list' %}">
+      <i class="fa-solid fa-arrow-right me-1"></i>رجوع
+    </a>
+  </div>
 </div>
 <div class="card shadow-sm">
   <div class="card-body">
