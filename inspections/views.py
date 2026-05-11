@@ -336,24 +336,6 @@ def user_logout(request):
     return redirect('home')
 
 
-def external_establishments_approval(request):
-    context = {
-        'module_title': 'اعتماد المنشآت الخارجية',
-        'module_description': 'هذه الوحدة ستكون متاحة قريباً.',
-        'minimal_nav': True,
-    }
-    return render(request, 'inspections/module_placeholder.html', context)
-
-
-def conformity_assessment_bodies_assignment(request):
-    context = {
-        'module_title': 'تعيين جهات تقويم المطابقة',
-        'module_description': 'هذه الوحدة ستكون متاحة قريباً.',
-        'minimal_nav': True,
-    }
-    return render(request, 'inspections/module_placeholder.html', context)
-
-
 @login_required
 def qualification_followup_list(request):
     qs = QualificationFollowUp.objects.select_related('establishment').all()
