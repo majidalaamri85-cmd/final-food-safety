@@ -29,12 +29,13 @@ import hashlib
 import tempfile
 import zipfile
 from collections import OrderedDict
-from io import BytesIO
+from io import BytesIO, StringIO
 
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
+from django.core.management import call_command
 from django.contrib.staticfiles import finders
 from django.core.cache import cache
 from django.core.paginator import Paginator
@@ -108,6 +109,31 @@ def _normalize_criterion_code(code):
 def _get_ready_corrective_action_text(criterion_code):
     normalized_code = _normalize_criterion_code(criterion_code)
     return READY_CORRECTIVE_ACTIONS_BY_CODE.get(normalized_code, '')
+
+
+def _get_existing_sqlite_database_path():
+    database = settings.DATABASES.get('default', {})
+    engine = database.get('ENGINE', '')
+    name = database.get('NAME')
+    if 'sqlite3' not in engine or not name or name == ':memory:':
+        return None
+
+    db_path = os.path.abspath(os.fspath(name))
+    if os.path.exists(db_path):
+        return db_path
+    return None
+
+
+def _build_database_json_dump():
+    output = StringIO()
+    call_command(
+        'dumpdata',
+        '--natural-foreign',
+        '--natural-primary',
+        exclude=['contenttypes', 'auth.Permission'],
+        stdout=output,
+    )
+    return output.getvalue().encode('utf-8')
 
 
 def _get_profile(user):
@@ -655,61 +681,67 @@ def establishment_create(request):
 
 @login_required
 def download_database_backup(request):
+    if request.user.is_superuser:
+        timestamp = timezone.now().strftime('%Y%m%d_%H%M%S')
+        db_path = _get_existing_sqlite_database_path()
+        if db_path:
+            backup_name = f'food_safety_backup_{timestamp}.sqlite3'
+
+            return FileResponse(
+                open(db_path, 'rb'),
+                as_attachment=True,
+                filename=backup_name,
+                content_type='application/x-sqlite3',
+            )
+
+        backup_name = f'food_safety_backup_{timestamp}.json'
+        response = HttpResponse(
+            _build_database_json_dump(),
+            content_type='application/json; charset=utf-8',
+        )
+        response['Content-Disposition'] = f'attachment; filename="{backup_name}"'
+        return response
+
     if not request.user.is_superuser:
         messages.error(request, 'غير مسموح لك بتنزيل النسخة الاحتياطية.')
         return redirect('home')
-
-    db_path = settings.DATABASES.get('default', {}).get('NAME')
-    if not db_path or not os.path.exists(db_path):
-        messages.error(request, 'ملف قاعدة البيانات غير موجود.')
-        return redirect('establishment_list')
-
-    timestamp = timezone.now().strftime('%Y%m%d_%H%M%S')
-    backup_name = f'food_safety_backup_{timestamp}.sqlite3'
-
-    return FileResponse(
-        open(db_path, 'rb'),
-        as_attachment=True,
-        filename=backup_name,
-        content_type='application/x-sqlite3',
-    )
 
 
 @login_required
 def download_reports_backup(request):
+    if request.user.is_superuser:
+        timestamp = timezone.now().strftime('%Y%m%d_%H%M%S')
+        backup_name = f'food_safety_reports_backup_{timestamp}.zip'
+        media_root = getattr(settings, 'MEDIA_ROOT', '')
+        db_path = _get_existing_sqlite_database_path()
+
+        zip_buffer = BytesIO()
+        with zipfile.ZipFile(zip_buffer, 'w', compression=zipfile.ZIP_DEFLATED) as backup_zip:
+            if db_path:
+                backup_zip.write(db_path, arcname=f'database/{os.path.basename(db_path)}')
+            else:
+                backup_zip.writestr('database/database_dump.json', _build_database_json_dump())
+
+            if media_root:
+                for image in EvaluationImage.objects.only('image').iterator():
+                    if not image.image:
+                        continue
+                    file_name = image.image.name
+                    file_path = os.path.join(media_root, file_name)
+                    if os.path.exists(file_path):
+                        backup_zip.write(file_path, arcname=f'media/{file_name}')
+
+        zip_buffer.seek(0)
+        return FileResponse(
+            zip_buffer,
+            as_attachment=True,
+            filename=backup_name,
+            content_type='application/zip',
+        )
+
     if not request.user.is_superuser:
         messages.error(request, 'غير مسموح لك بتنزيل النسخة الاحتياطية.')
         return redirect('home')
-
-    db_path = settings.DATABASES.get('default', {}).get('NAME')
-    if not db_path or not os.path.exists(db_path):
-        messages.error(request, 'ملف قاعدة البيانات غير موجود.')
-        return redirect('evaluation_list')
-
-    timestamp = timezone.now().strftime('%Y%m%d_%H%M%S')
-    backup_name = f'food_safety_reports_backup_{timestamp}.zip'
-    media_root = getattr(settings, 'MEDIA_ROOT', '')
-
-    zip_buffer = BytesIO()
-    with zipfile.ZipFile(zip_buffer, 'w', compression=zipfile.ZIP_DEFLATED) as backup_zip:
-        backup_zip.write(db_path, arcname=f'database/{os.path.basename(db_path)}')
-
-        if media_root:
-            for image in EvaluationImage.objects.only('image').iterator():
-                if not image.image:
-                    continue
-                file_name = image.image.name
-                file_path = os.path.join(media_root, file_name)
-                if os.path.exists(file_path):
-                    backup_zip.write(file_path, arcname=f'media/{file_name}')
-
-    zip_buffer.seek(0)
-    return FileResponse(
-        zip_buffer,
-        as_attachment=True,
-        filename=backup_name,
-        content_type='application/zip',
-    )
 
 
 @login_required
