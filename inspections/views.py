@@ -101,6 +101,7 @@ def _clear_evaluation_pdf_cache(evaluation_id):
     cache.delete_many([
         f'pdf_bytes:eval:{evaluation_id}',
         f'pdf_bytes:v2:eval:{evaluation_id}',
+        f'pdf_bytes:v3:eval:{evaluation_id}',
     ])
 
 
@@ -963,6 +964,9 @@ def evaluation_create(request):
             inspector=request.user,
             visit_date=visit_date or timezone.localdate(),
             notes=notes,
+            iso_22000_certificate=request.POST.get('iso_22000_certificate', '').strip(),
+            haccp_certificate=request.POST.get('haccp_certificate', '').strip(),
+            other_quality_certificate=request.POST.get('other_quality_certificate', '').strip(),
         )
         create_evaluation_items(evaluation)
         
@@ -984,8 +988,16 @@ def evaluation_create(request):
                     image=image_file,
                 )
         
+        record_checks = list(
+            EvaluationRecordCheck.objects.filter(evaluation=evaluation).select_related('record')
+        )
+        for record_check in record_checks:
+            record_check.is_available = request.POST.get(f'record_{record_check.record_id}') == 'on'
+            record_check.remarks = request.POST.get(f'record_remarks_{record_check.record_id}', '').strip()
+        EvaluationRecordCheck.objects.bulk_update(record_checks, ['is_available', 'remarks'])
+
         # Calculate results
-        evaluation.calculate_results(items=list(all_items))
+        evaluation.calculate_results(items=list(all_items), record_checks=record_checks)
         
         # Check if save as draft
         if 'save_as_draft' in request.POST:
@@ -1035,11 +1047,13 @@ def evaluation_create(request):
             Criterion.objects.filter(is_active=True).order_by('sort_order', 'code')
         )
     ).order_by('sort_order', 'name_ar')
+    records = RequiredRecord.objects.filter(is_active=True).order_by('name_ar', 'id')
     
     return render(request, 'inspections/evaluation_create.html', {
         'form': form,
         'establishment': default_establishment,
         'sections': sections,
+        'records': records,
     })
 
 
@@ -1567,6 +1581,11 @@ def _build_evaluation_report_context(evaluation):
     )
 
     grouped_items = OrderedDict()
+    record_checks = list(
+        EvaluationRecordCheck.objects.filter(evaluation=evaluation, record__is_active=True)
+        .select_related('record')
+        .order_by('record__name_ar', 'id')
+    )
     images_by_criterion = {}
     for image in EvaluationImage.objects.filter(evaluation=evaluation).select_related('criterion').order_by('id'):
         images_by_criterion.setdefault(image.criterion_id, []).append(image)
@@ -1606,6 +1625,7 @@ def _build_evaluation_report_context(evaluation):
         'evaluation': evaluation,
         'grouped_items': grouped_items,
         'images_by_criterion': images_by_criterion,
+        'record_checks': record_checks,
         'signature_rows': signature_rows,
         'non_compliant_total': len(items_list),
     }
@@ -1758,6 +1778,7 @@ def _build_evaluation_docx(evaluation):
     context = _build_evaluation_report_context(evaluation)
     grouped_items = context['grouped_items']
     images_by_criterion = context['images_by_criterion']
+    record_checks = context['record_checks']
 
     document = Document()
     section = document.sections[0]
@@ -1805,6 +1826,26 @@ def _build_evaluation_docx(evaluation):
         ('شهادات الجودة', _format_docx_file(establishment.doc_quality_certificates), 'مخططات المصنع', _format_docx_file(establishment.doc_factory_layout)),
     ]
     _add_docx_label_value_table(document, establishment_rows, [Inches(1.45), Inches(3.5), Inches(1.45), Inches(3.5)])
+
+    document.add_paragraph()
+    _add_docx_heading(document, 'دليل الهاسب للشركة إن وجد', 2)
+    certificate_rows = [
+        ('آيزو 22000', evaluation.iso_22000_certificate, 'الهاسب', evaluation.haccp_certificate),
+        ('أخرى', evaluation.other_quality_certificate, '', ''),
+    ]
+    _add_docx_label_value_table(document, certificate_rows, [Inches(1.45), Inches(3.5), Inches(1.45), Inches(3.5)])
+    records_table = document.add_table(rows=1, cols=3)
+    records_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+    records_table.style = 'Table Grid'
+    _set_table_rtl(records_table)
+    for index, header in enumerate(['المتطلبات', 'وجود المستند', 'الملاحظات']):
+        _set_cell_text(records_table.rows[0].cells[index], header, bold=True, fill='2F855A', font_color='FFFFFF')
+    for record_check in record_checks:
+        cells = records_table.add_row().cells
+        _set_cell_text(cells[0], record_check.record.name_ar)
+        _set_cell_text(cells[1], 'نعم' if record_check.is_available else 'لا')
+        _set_cell_text(cells[2], record_check.remarks or '-')
+    _set_docx_table_column_widths(records_table, [Inches(5), Inches(1.5), Inches(3)])
 
     document.add_paragraph()
     _add_docx_heading(document, 'البنود غير المستوفية والإجراءات التصحيحية', 2)
@@ -1953,7 +1994,7 @@ def evaluation_pdf(request, pk):
     # استخدم الكاش فقط للتقييمات المكتملة (المسودات قد تتغير)
     pdf_cache_key = None
     if evaluation.approval_status == 'completed':
-        pdf_cache_key = f'pdf_bytes:v2:eval:{pk}'
+        pdf_cache_key = f'pdf_bytes:v3:eval:{pk}'
         cached_pdf = cache.get(pdf_cache_key)
         if cached_pdf is not None:
             response = HttpResponse(cached_pdf, content_type='application/pdf')

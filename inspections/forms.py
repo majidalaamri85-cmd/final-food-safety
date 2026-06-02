@@ -143,16 +143,29 @@ class EvaluationHeaderForm(forms.ModelForm):
         return cleaned_data
     class Meta:
         model = Evaluation
-        fields = ['establishment', 'visit_date', 'notes']
+        fields = [
+            'establishment',
+            'visit_date',
+            'notes',
+            'iso_22000_certificate',
+            'haccp_certificate',
+            'other_quality_certificate',
+        ]
         widgets = {
             'establishment': forms.Select(attrs={'class': 'form-select'}),
             'visit_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 4, 'placeholder': 'أدخل الملاحظات العامة للتقييم'}),
+            'iso_22000_certificate': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'تاريخ الإصدار، تاريخ الانتهاء، الجهة المانحة'}),
+            'haccp_certificate': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'تاريخ الإصدار، تاريخ الانتهاء، الجهة المانحة'}),
+            'other_quality_certificate': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'أدخل الشهادات الأخرى إن وجدت'}),
         }
         labels = {
             'establishment': 'المنشأة',
             'visit_date': 'تاريخ التقييم',
             'notes': 'ملاحظات عامة',
+            'iso_22000_certificate': 'آيزو 22000',
+            'haccp_certificate': 'الهاسب',
+            'other_quality_certificate': 'أخرى',
         }
 
 

@@ -1,0 +1,38 @@
+<div class="section">
+  <div class="section-header" id="headingHaccpGuideCreate" onclick="toggleSection(this)">
+    <span>دليل الهاسب للشركة إن وجد</span>
+    <span class="toggle-icon">&#9660;</span>
+  </div>
+  <div class="section-content">
+    <h4>شهادات أنظمة الجودة</h4>
+    <div class="form-grid">
+      <div>
+        <label for="iso_22000_certificate">آيزو 22000</label>
+        <input type="text" id="iso_22000_certificate" name="iso_22000_certificate">
+      </div>
+      <div>
+        <label for="haccp_certificate">الهاسب</label>
+        <input type="text" id="haccp_certificate" name="haccp_certificate">
+      </div>
+      <div>
+        <label for="other_quality_certificate">أخرى</label>
+        <input type="text" id="other_quality_certificate" name="other_quality_certificate">
+      </div>
+    </div>
+
+    <h4>المتطلبات</h4>
+    {% for record in records %}
+    <div class="evaluation-item">
+      <div class="item-question">{{ record.name_ar }}</div>
+      <div class="item-options">
+        <label>
+          <input type="checkbox" name="record_{{ record.id }}">
+          نعم
+        </label>
+      </div>
+      <label for="record_remarks_{{ record.id }}">الملاحظات</label>
+      <textarea id="record_remarks_{{ record.id }}" name="record_remarks_{{ record.id }}" class="form-control"></textarea>
+    </div>
+    {% endfor %}
+  </div>
+</div>

@@ -343,6 +343,9 @@
             {% endfor %}
           </div>
         </div>
+        {% if section.sort_order == 24 %}
+          {% include 'inspections/_evaluation_haccp_create_section.html' %}
+        {% endif %}
         {% endfor %}
       </div>
 

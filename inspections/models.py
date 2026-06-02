@@ -248,6 +248,9 @@ class Evaluation(models.Model):
     notes = models.TextField('ملاحظات عامة', blank=True)
     corrective_action = models.TextField('الإجراءات التصحيحية العامة', blank=True)
     follow_up_date = models.DateField('تاريخ المتابعة', null=True, blank=True)
+    iso_22000_certificate = models.CharField('آيزو 22000', max_length=500, blank=True)
+    haccp_certificate = models.CharField('الهاسب', max_length=500, blank=True)
+    other_quality_certificate = models.CharField('شهادات أنظمة جودة أخرى', max_length=500, blank=True)
     created_at = models.DateTimeField('تاريخ إنشاء التقييم', auto_now_add=True)
 
     class Meta:

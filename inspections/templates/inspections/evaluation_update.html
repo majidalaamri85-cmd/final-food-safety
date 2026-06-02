@@ -208,39 +208,10 @@
           </div>
         </div>
       </div>
+      {% if section.sort_order == 24 %}
+        {% include 'inspections/_evaluation_haccp_section.html' %}
+      {% endif %}
     {% endfor %}
-
-    <div class="accordion-item section-card mb-3 shadow-sm">
-      <h2 class="accordion-header" id="headingRecords">
-        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseRecords">
-          التوثيق والسجلات المطلوبة
-        </button>
-      </h2>
-      <div id="collapseRecords" class="accordion-collapse collapse" data-bs-parent="#evaluationAccordion">
-        <div class="accordion-body">
-          {% for form in record_formset.forms %}
-            <div class="item-row">
-              {{ form.id }}
-              <div class="row g-3 align-items-center">
-                <div class="col-md-5">
-                  <div class="item-text">{{ form.instance.record.name_ar }}</div>
-                </div>
-                <div class="col-md-2">
-                  <label class="form-label d-block">متوفر</label>
-                  <div class="form-check pt-2">
-                    {{ form.is_available }}
-                  </div>
-                </div>
-                <div class="col-md-5">
-                  <label class="form-label">ملاحظات السجل</label>
-                  {{ form.remarks }}
-                </div>
-              </div>
-            </div>
-          {% endfor %}
-        </div>
-      </div>
-    </div>
   </div>
 
   <div class="card shadow-sm mt-4">

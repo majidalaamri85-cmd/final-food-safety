@@ -1,0 +1,49 @@
+<div class="accordion-item section-card mb-3 shadow-sm">
+  <h2 class="accordion-header" id="headingHaccpGuide">
+    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseHaccpGuide">
+      دليل الهاسب للشركة إن وجد
+    </button>
+  </h2>
+  <div id="collapseHaccpGuide" class="accordion-collapse collapse" data-bs-parent="#evaluationAccordion">
+    <div class="accordion-body">
+      <h6 class="fw-bold text-success mb-3">شهادات أنظمة الجودة</h6>
+      <div class="row g-3 mb-4">
+        <div class="col-md-4">
+          <label class="form-label">{{ meta_form.iso_22000_certificate.label }}</label>
+          {{ meta_form.iso_22000_certificate }}
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">{{ meta_form.haccp_certificate.label }}</label>
+          {{ meta_form.haccp_certificate }}
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">{{ meta_form.other_quality_certificate.label }}</label>
+          {{ meta_form.other_quality_certificate }}
+        </div>
+      </div>
+
+      <h6 class="fw-bold text-success mb-2">المتطلبات</h6>
+      {% for form in record_formset.forms %}
+        <div class="item-row">
+          {{ form.id }}
+          <div class="row g-3 align-items-center">
+            <div class="col-md-5">
+              <div class="item-text">{{ form.instance.record.name_ar }}</div>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label d-block">وجود المستند</label>
+              <div class="form-check pt-2">
+                {{ form.is_available }}
+                <label class="form-check-label" for="{{ form.is_available.id_for_label }}">نعم</label>
+              </div>
+            </div>
+            <div class="col-md-5">
+              <label class="form-label">الملاحظات</label>
+              {{ form.remarks }}
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>

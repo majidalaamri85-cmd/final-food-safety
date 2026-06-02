@@ -683,6 +683,43 @@
 
         <table class="section-title-table" dir="rtl">
           <tr>
+            <td class="section-title-text" colspan="2">{{ 'دليل الهاسب للشركة إن وجد'|arabic_pdf }}</td>
+          </tr>
+        </table>
+        <table class="section-table" dir="rtl">
+          <thead>
+            <tr>
+              <th style="width: 20%;">{{ 'الشهادة'|arabic_pdf }}</th>
+              <th style="width: 80%;">{{ 'التفاصيل'|arabic_pdf }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>{{ 'آيزو 22000'|arabic_pdf }}</td><td>{{ evaluation.iso_22000_certificate|default:'-'|arabic_pdf }}</td></tr>
+            <tr><td>{{ 'الهاسب'|arabic_pdf }}</td><td>{{ evaluation.haccp_certificate|default:'-'|arabic_pdf }}</td></tr>
+            <tr><td>{{ 'أخرى'|arabic_pdf }}</td><td>{{ evaluation.other_quality_certificate|default:'-'|arabic_pdf }}</td></tr>
+          </tbody>
+        </table>
+        <table class="section-table" dir="rtl">
+          <thead>
+            <tr>
+              <th style="width: 55%;">{{ 'المتطلبات'|arabic_pdf }}</th>
+              <th style="width: 15%;">{{ 'وجود المستند'|arabic_pdf }}</th>
+              <th style="width: 30%;">{{ 'الملاحظات'|arabic_pdf }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for record_check in record_checks %}
+            <tr>
+              <td>{{ record_check.record.name_ar|arabic_pdf }}</td>
+              <td>{% if record_check.is_available %}{{ 'نعم'|arabic_pdf }}{% else %}{{ 'لا'|arabic_pdf }}{% endif %}</td>
+              <td>{{ record_check.remarks|default:'-'|arabic_pdf }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        <table class="section-title-table" dir="rtl">
+          <tr>
             <td class="section-title-text" colspan="2">{{ 'نتيجة التقييم'|arabic_pdf }}</td>
           </tr>
         </table>
