@@ -103,19 +103,16 @@
             </td>
             <td>{{ e.visit_date|date:"Y/m/d"|arabic_digits }}</td>
             <td class="text-center">
-              <span class="badge classification-badge rounded-pill px-3 py-1
-                {% if e.classification == 'excellent' %}classification-badge--excellent
-                {% elif e.classification == 'good' %}classification-badge--good
-                {% elif e.classification == 'acceptable' %}classification-badge--acceptable
-                {% elif e.classification == 'weak' %}classification-badge--weak
-                {% endif %}"
-                {% if e.classification == 'excellent' %}style="background-color:#247a61;"
-                {% elif e.classification == 'good' %}style="background-color:#0d6efd;"
-                {% elif e.classification == 'acceptable' %}style="background-color:#b94700;"
-                {% elif e.classification == 'weak' %}style="background-color:#c0392b;"
+              {% with status=e.establishment_status %}
+              <span class="badge classification-badge rounded-pill px-3 py-1"
+                {% if status.color == 'success' %}style="background-color:#247a61;color:#fff;"
+                {% elif status.color == 'info' %}style="background-color:#0d6efd;color:#fff;"
+                {% elif status.color == 'warning' %}style="background-color:#b94700;color:#fff;"
+                {% else %}style="background-color:#c0392b;color:#fff;"
                 {% endif %}>
-                {{ e.get_classification_display }}
+                {{ status.label }}
               </span>
+              {% endwith %}
             </td>
             <td class="text-center">
               {% if e.approval_status == 'completed' %}
