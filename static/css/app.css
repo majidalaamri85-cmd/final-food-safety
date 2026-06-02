@@ -160,6 +160,11 @@ a:hover { color: var(--primary-dark); }
 
 /* ===================== BADGES ===================== */
 .badge { font-weight: 500; letter-spacing: .3px; }
+.classification-badge { color: #fff; }
+.classification-badge--excellent { background-color: #27866b; }
+.classification-badge--good { background-color: #0d6efd; }
+.classification-badge--acceptable { background-color: #e65c00; }
+.classification-badge--weak { background-color: #c0392b; }
 
 /* ===================== PAGINATION ===================== */
 .page-link {

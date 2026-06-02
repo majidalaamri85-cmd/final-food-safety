@@ -103,11 +103,12 @@
             </td>
             <td>{{ e.visit_date|date:"Y/m/d"|arabic_digits }}</td>
             <td class="text-center">
-              <span class="badge rounded-pill px-3 py-1
-                {% if e.classification == 'excellent' %}bg-success
-                {% elif e.classification == 'good' %}bg-info
-                {% elif e.classification == 'acceptable' %}bg-warning text-dark
-                {% else %}bg-danger{% endif %}">
+              <span class="badge classification-badge rounded-pill px-3 py-1
+                {% if e.classification == 'excellent' %}classification-badge--excellent
+                {% elif e.classification == 'good' %}classification-badge--good
+                {% elif e.classification == 'acceptable' %}classification-badge--acceptable
+                {% elif e.classification == 'weak' %}classification-badge--weak
+                {% endif %}">
                 {{ e.get_classification_display }}
               </span>
             </td>
