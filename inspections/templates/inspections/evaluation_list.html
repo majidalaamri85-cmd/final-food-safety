@@ -108,7 +108,12 @@
                 {% elif e.classification == 'good' %}classification-badge--good
                 {% elif e.classification == 'acceptable' %}classification-badge--acceptable
                 {% elif e.classification == 'weak' %}classification-badge--weak
-                {% endif %}">
+                {% endif %}"
+                {% if e.classification == 'excellent' %}style="background-color:#247a61;"
+                {% elif e.classification == 'good' %}style="background-color:#0d6efd;"
+                {% elif e.classification == 'acceptable' %}style="background-color:#b94700;"
+                {% elif e.classification == 'weak' %}style="background-color:#c0392b;"
+                {% endif %}>
                 {{ e.get_classification_display }}
               </span>
             </td>
