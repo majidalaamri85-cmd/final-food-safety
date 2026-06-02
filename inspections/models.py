@@ -488,6 +488,8 @@ class QualificationFollowUp(models.Model):
 
     @property
     def visit_no(self):
+        if hasattr(self, 'cached_visit_no'):
+            return self.cached_visit_no
         if not self.pk:
             return 1
         return (

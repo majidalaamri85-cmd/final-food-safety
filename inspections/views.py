@@ -39,7 +39,8 @@ from django.core.management import call_command
 from django.contrib.staticfiles import finders
 from django.core.cache import cache
 from django.core.paginator import Paginator
-from django.db.models import Avg, Count, OuterRef, Prefetch, Q, Subquery
+from django.db.models import Avg, Count, IntegerField, OuterRef, Prefetch, Q, Subquery, Value
+from django.db.models.functions import Coalesce
 from django.forms import modelformset_factory
 from django.http import FileResponse, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -94,6 +95,13 @@ REFERENCE_DATA_CACHE_TIMEOUT = 60 * 30
 DASHBOARD_CACHE_TIMEOUT = 60
 
 _ARABIC_TO_LATIN_DIGITS = str.maketrans('٠١٢٣٤٥٦٧٨٩', '0123456789')
+
+
+def _clear_evaluation_pdf_cache(evaluation_id):
+    cache.delete_many([
+        f'pdf_bytes:eval:{evaluation_id}',
+        f'pdf_bytes:v2:eval:{evaluation_id}',
+    ])
 
 
 def _normalize_digit_text(value):
@@ -170,6 +178,25 @@ def _get_activity_options(qs):
     )
 
 
+def _with_qualification_visit_no(queryset):
+    visit_no_subquery = (
+        QualificationFollowUp.objects.filter(
+            establishment_id=OuterRef('establishment_id'),
+            pk__lte=OuterRef('pk'),
+        )
+        .order_by()
+        .values('establishment_id')
+        .annotate(total=Count('id'))
+        .values('total')[:1]
+    )
+    return queryset.annotate(
+        cached_visit_no=Coalesce(
+            Subquery(visit_no_subquery, output_field=IntegerField()),
+            Value(1),
+        )
+    )
+
+
 def _build_dashboard_cache_key(user_id, governorate_id, wilayat_id, classification, approval_status, date_from, date_to):
     raw = '|'.join([
         str(user_id),
@@ -205,6 +232,13 @@ def _apply_rbac(qs_establishments, qs_evaluations, profile):
             qs_evaluations = qs_evaluations.filter(inspector=profile.user)
 
     return qs_establishments, qs_evaluations
+
+
+def _get_allowed_evaluations(user, queryset=None):
+    if queryset is None:
+        queryset = Evaluation.objects.all()
+    _, queryset = _apply_rbac(None, queryset, _get_profile(user))
+    return queryset
 
 
 def _build_default_corrective_action(item):
@@ -364,7 +398,9 @@ def user_logout(request):
 
 @login_required
 def qualification_followup_list(request):
-    qs = QualificationFollowUp.objects.select_related('establishment').all()
+    qs = _with_qualification_visit_no(
+        QualificationFollowUp.objects.select_related('establishment', 'evaluation').all()
+    )
 
     q = request.GET.get('q', '').strip()
     governorate = request.GET.get('governorate', '').strip()
@@ -399,12 +435,22 @@ def qualification_followup_list(request):
         form = QualificationFollowUpForm()
 
     today = timezone.localdate()
-    stats = qs.aggregate(total=Count('id'), avg_progress=Avg('progress_percent'))
+    stats = qs.aggregate(
+        total=Count('id'),
+        avg_progress=Avg('progress_percent'),
+        completed=Count('id', filter=Q(current_status='completed')),
+        in_progress=Count('id', filter=Q(current_status='in_progress')),
+        stalled=Count('id', filter=Q(current_status='stalled')),
+        overdue=Count(
+            'id',
+            filter=Q(expected_completion_date__lt=today) & ~Q(current_status='completed'),
+        ),
+    )
     total_count = stats['total'] or 0
-    completed_count = qs.filter(current_status='completed').count()
-    in_progress_count = qs.filter(current_status='in_progress').count()
-    stalled_count = qs.filter(current_status='stalled').count()
-    overdue_count = qs.filter(expected_completion_date__lt=today).exclude(current_status='completed').count()
+    completed_count = stats['completed'] or 0
+    in_progress_count = stats['in_progress'] or 0
+    stalled_count = stats['stalled'] or 0
+    overdue_count = stats['overdue'] or 0
     avg_progress = round(stats['avg_progress'] or 0, 1)
 
     paginator = Paginator(qs, PAGE_SIZE)
@@ -486,15 +532,20 @@ def dashboard(request):
         evaluations_qs = evaluations_qs.filter(visit_date__lte=date_to)
 
     total_establishments = establishments_qs.count()
-    total_evaluations = evaluations_qs.count()
-    completed_evaluations = evaluations_qs.filter(approval_status='completed').count()
+    evaluation_stats = evaluations_qs.aggregate(
+        total=Count('id'),
+        completed=Count('id', filter=Q(approval_status='completed')),
+        avg_percentage=Avg('percentage'),
+    )
+    total_evaluations = evaluation_stats['total'] or 0
+    completed_evaluations = evaluation_stats['completed'] or 0
     open_actions = CorrectiveActionLog.objects.exclude(status='closed').filter(evaluation__in=evaluations_qs).count()
     non_compliant_items = EvaluationItem.objects.filter(
         status='non_compliant',
         criterion__is_active=True,
         evaluation__in=evaluations_qs,
     ).count()
-    avg_percentage = evaluations_qs.aggregate(avg=Avg('percentage'))['avg'] or 0
+    avg_percentage = evaluation_stats['avg_percentage'] or 0
 
     by_governorate = list(
         establishments_qs.values('governorate__name_ar')
@@ -747,10 +798,9 @@ def download_reports_backup(request):
 @login_required
 @require_POST
 def evaluation_delete(request, pk):
-    profile = _get_profile(request.user)
-    allowed_qs = Evaluation.objects.all()
-    _, allowed_qs = _apply_rbac(None, allowed_qs, profile)
+    allowed_qs = _get_allowed_evaluations(request.user)
     evaluation = get_object_or_404(allowed_qs, pk=pk)
+    evaluation_id = evaluation.pk
 
     establishment_name = evaluation.establishment.commercial_name
     visit_date = evaluation.visit_date
@@ -760,6 +810,7 @@ def evaluation_delete(request, pk):
             image.image.delete(save=False)
 
     evaluation.delete()
+    _clear_evaluation_pdf_cache(evaluation_id)
     messages.success(
         request,
         f'تم حذف التقرير للمنشأة {establishment_name} بتاريخ {visit_date:%Y/%m/%d}.',
@@ -779,6 +830,7 @@ def evaluation_list(request):
         .only(
             'id',
             'visit_date',
+            'percentage',
             'classification',
             'approval_status',
             'establishment__commercial_name',
@@ -854,27 +906,34 @@ def evaluation_list(request):
 
 
 def create_evaluation_items(evaluation):
-    criteria = Criterion.objects.filter(is_active=True).select_related('section').order_by('section__sort_order', 'sort_order')
-    for criterion in criteria:
-        EvaluationItem.objects.get_or_create(
-            evaluation=evaluation,
-            criterion=criterion,
-            defaults={'status': 'compliant'}
-        )
+    criteria = list(Criterion.objects.filter(is_active=True).only('id', 'weight'))
+    EvaluationItem.objects.bulk_create(
+        [
+            EvaluationItem(
+                evaluation=evaluation,
+                criterion=criterion,
+                status='compliant',
+                score_awarded=criterion.weight,
+            )
+            for criterion in criteria
+        ],
+        ignore_conflicts=True,
+    )
 
-    records = RequiredRecord.objects.filter(is_active=True).order_by('name_ar')
-    for record in records:
-        EvaluationRecordCheck.objects.get_or_create(
-            evaluation=evaluation,
-            record=record,
-        )
+    records = list(RequiredRecord.objects.filter(is_active=True).only('id'))
+    EvaluationRecordCheck.objects.bulk_create(
+        [
+            EvaluationRecordCheck(evaluation=evaluation, record=record)
+            for record in records
+        ],
+        ignore_conflicts=True,
+    )
 
 
 def sync_evaluation_items_with_active_template(evaluation):
     create_evaluation_items(evaluation)
 
 
-@login_required
 @login_required
 def evaluation_create(request):
     profile = _get_profile(request.user)
@@ -893,8 +952,8 @@ def evaluation_create(request):
         notes = request.POST.get('notes', '')
         
         try:
-            establishment = Establishment.objects.get(id=establishment_id)
-        except Establishment.DoesNotExist:
+            establishment = establishments_qs.get(id=establishment_id)
+        except (Establishment.DoesNotExist, TypeError, ValueError):
             messages.error(request, 'المنشأة المختارة غير موجودة.')
             return redirect('evaluation_create')
         
@@ -931,11 +990,11 @@ def evaluation_create(request):
         # Check if save as draft
         if 'save_as_draft' in request.POST:
             evaluation.approval_status = 'draft'
-            evaluation.save(update_fields=['approval_status'])
+            evaluation.save(update_fields=['total_points', 'percentage', 'classification', 'approval_status'])
             messages.success(request, 'تم حفظ التقييم كمسودة.')
         else:
             evaluation.approval_status = 'completed'
-            evaluation.save(update_fields=['approval_status'])
+            evaluation.save(update_fields=['total_points', 'percentage', 'classification', 'approval_status'])
             messages.success(request, f'تم اعتماد التقييم بنجاح. النسبة: {evaluation.percentage}% - التصنيف: {evaluation.get_classification_display()}')
         
         EvaluationActivityLog.objects.create(
@@ -988,7 +1047,10 @@ def evaluation_create(request):
 def evaluation_update(request, pk):
     profile = _get_profile(request.user)
     evaluation = get_object_or_404(
-        Evaluation.objects.select_related('establishment', 'inspector', 'reviewer').prefetch_related('team_members'),
+        _get_allowed_evaluations(
+            request.user,
+            Evaluation.objects.select_related('establishment', 'inspector', 'reviewer').prefetch_related('team_members'),
+        ),
         pk=pk,
     )
 
@@ -1133,7 +1195,7 @@ def evaluation_update(request, pk):
                                     related_haccp_file.save(update_fields=['notes'])
 
             # مسح كاش PDF بعد الحفظ حتى لا يُعرض تقرير قديم
-            cache.delete(f'pdf_bytes:eval:{evaluation.pk}')
+            _clear_evaluation_pdf_cache(evaluation.pk)
             messages.success(request, f'تم حفظ وإنهاء التقييم بنجاح. النسبة: {evaluation.percentage}% - التصنيف: {evaluation.get_classification_display()}')
             return redirect('evaluation_update', pk=evaluation.pk)
     else:
@@ -1208,7 +1270,7 @@ def evaluation_update(request, pk):
 @login_required
 def evaluation_submit(request, pk):
     profile = _get_profile(request.user)
-    evaluation = get_object_or_404(Evaluation, pk=pk)
+    evaluation = get_object_or_404(_get_allowed_evaluations(request.user), pk=pk)
 
     # المفتش لا يستطيع إنهاء تقييمات الآخرين
     if profile and profile.role == 'inspector' and evaluation.inspector != request.user:
@@ -1216,6 +1278,7 @@ def evaluation_submit(request, pk):
         return redirect('evaluation_list')
 
     evaluation.mark_completed()
+    _clear_evaluation_pdf_cache(evaluation.pk)
     EvaluationActivityLog.objects.create(evaluation=evaluation, user=request.user, action='إنهاء التقييم')
     messages.success(request, 'تم إنهاء التقييم وحفظه كحالة مكتملة.')
     return redirect('evaluation_list')
@@ -1309,7 +1372,9 @@ def export_establishments_excel(request):
 
 @login_required
 def export_qualification_followups_excel(request):
-    qs = QualificationFollowUp.objects.select_related('establishment').all()
+    qs = _with_qualification_visit_no(
+        QualificationFollowUp.objects.select_related('establishment').all()
+    )
 
     q = request.GET.get('q', '').strip()
     governorate = request.GET.get('governorate', '').strip()
@@ -1852,13 +1917,16 @@ def _build_evaluation_docx(evaluation):
 @login_required
 def evaluation_word(request, pk):
     evaluation = get_object_or_404(
-        Evaluation.objects.select_related(
-            'establishment',
-            'establishment__governorate',
-            'establishment__wilayat',
-            'inspector',
-            'reviewer',
-        ).prefetch_related('team_members'),
+        _get_allowed_evaluations(
+            request.user,
+            Evaluation.objects.select_related(
+                'establishment',
+                'establishment__governorate',
+                'establishment__wilayat',
+                'inspector',
+                'reviewer',
+            ).prefetch_related('team_members'),
+        ),
         pk=pk,
     )
     docx_file = _build_evaluation_docx(evaluation)
@@ -1876,7 +1944,10 @@ PDF_CACHE_TIMEOUT = 60 * 10  # 10 دقائق
 @login_required
 def evaluation_pdf(request, pk):
     evaluation = get_object_or_404(
-        Evaluation.objects.select_related('establishment', 'inspector', 'reviewer').prefetch_related('team_members'),
+        _get_allowed_evaluations(
+            request.user,
+            Evaluation.objects.select_related('establishment', 'inspector', 'reviewer').prefetch_related('team_members'),
+        ),
         pk=pk,
     )
     # استخدم الكاش فقط للتقييمات المكتملة (المسودات قد تتغير)

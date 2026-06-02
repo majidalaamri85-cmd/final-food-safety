@@ -79,19 +79,32 @@ class Command(BaseCommand):
             )
             active_records = list(RequiredRecord.objects.filter(is_active=True).order_by('name_ar'))
 
-            for evaluation in Evaluation.objects.all():
-                for criterion in active_criteria:
-                    EvaluationItem.objects.get_or_create(
+            evaluations = list(Evaluation.objects.all())
+            EvaluationItem.objects.bulk_create(
+                [
+                    EvaluationItem(
                         evaluation=evaluation,
                         criterion=criterion,
-                        defaults={'status': 'compliant'},
+                        status='compliant',
+                        score_awarded=criterion.weight,
                     )
-                for record in active_records:
-                    EvaluationRecordCheck.objects.get_or_create(
-                        evaluation=evaluation,
-                        record=record,
-                    )
+                    for evaluation in evaluations
+                    for criterion in active_criteria
+                ],
+                batch_size=1000,
+                ignore_conflicts=True,
+            )
+            EvaluationRecordCheck.objects.bulk_create(
+                [
+                    EvaluationRecordCheck(evaluation=evaluation, record=record)
+                    for evaluation in evaluations
+                    for record in active_records
+                ],
+                batch_size=1000,
+                ignore_conflicts=True,
+            )
 
+            for evaluation in evaluations:
                 evaluation.items.filter(status='compliant').update(score_awarded=1)
                 evaluation.items.exclude(status='compliant').update(score_awarded=0)
                 evaluation.calculate_results()
