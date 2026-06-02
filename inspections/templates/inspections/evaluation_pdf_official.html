@@ -505,9 +505,19 @@
                 <span class="summary-label">{{ 'نسبة التقييم'|arabic_pdf }}</span>
                 <span class="summary-value">{{ evaluation.percentage|arabic_digits }}%</span>
               </td>
-              <td class="summary-accent-good">
+              <td
+                {% if evaluation.classification == 'excellent' %}style="background:#dff4eb;"
+                {% elif evaluation.classification == 'good' %}style="background:#e7f1ff;"
+                {% elif evaluation.classification == 'acceptable' %}style="background:#fff0dc;"
+                {% else %}style="background:#fce8e8;"
+                {% endif %}>
                 <span class="summary-label">{{ 'التصنيف النهائي'|arabic_pdf }}</span>
-                <span class="summary-value">{{ evaluation.get_classification_display|arabic_pdf }}</span>
+                <span class="summary-value"
+                  {% if evaluation.classification == 'excellent' %}style="color:#247a61;"
+                  {% elif evaluation.classification == 'good' %}style="color:#0d6efd;"
+                  {% elif evaluation.classification == 'acceptable' %}style="color:#b94700;"
+                  {% else %}style="color:#c0392b;"
+                  {% endif %}>{{ evaluation.get_classification_display|arabic_pdf }}</span>
               </td>
               <td>
                 <span class="summary-label">{{ 'قرار المنح والمتابعة'|arabic_pdf }}</span>
@@ -686,12 +696,32 @@
             </tr>
           </thead>
           <tbody>
-            <tr class="result-summary-row {% if status.blocks_grant %}result-summary-weak{% elif evaluation.classification == 'excellent' %}result-summary-excellent{% elif evaluation.classification == 'good' %}result-summary-good{% elif evaluation.classification == 'acceptable' %}result-summary-acceptable{% else %}result-summary-weak{% endif %}">
-              <td>
+            <tr class="result-summary-row {% if status.blocks_grant %}result-summary-weak{% elif evaluation.classification == 'excellent' %}result-summary-excellent{% elif evaluation.classification == 'good' %}result-summary-good{% elif evaluation.classification == 'acceptable' %}result-summary-acceptable{% else %}result-summary-weak{% endif %}"
+              {% if status.blocks_grant or evaluation.classification == 'weak' %}style="background:#fce8e8;"
+              {% elif evaluation.classification == 'excellent' %}style="background:#dff4eb;"
+              {% elif evaluation.classification == 'good' %}style="background:#e7f1ff;"
+              {% elif evaluation.classification == 'acceptable' %}style="background:#fff0dc;"
+              {% endif %}>
+              <td
+                {% if status.blocks_grant or evaluation.classification == 'weak' %}style="background:#fce8e8;"
+                {% elif evaluation.classification == 'excellent' %}style="background:#dff4eb;"
+                {% elif evaluation.classification == 'good' %}style="background:#e7f1ff;"
+                {% elif evaluation.classification == 'acceptable' %}style="background:#fff0dc;"
+                {% endif %}>
                 {{ status.description|arabic_pdf }}
               </td>
-              <td class="result-summary-percentage {{ evaluation.classification }}">{{ evaluation.percentage|arabic_digits }}%</td>
-              <td class="result-summary-class {{ evaluation.classification }}">{{ status.label|arabic_pdf }}</td>
+              <td class="result-summary-percentage {{ evaluation.classification }}"
+                {% if status.blocks_grant or evaluation.classification == 'weak' %}style="background:#fce8e8;color:#c0392b;"
+                {% elif evaluation.classification == 'excellent' %}style="background:#dff4eb;color:#247a61;"
+                {% elif evaluation.classification == 'good' %}style="background:#e7f1ff;color:#0d6efd;"
+                {% elif evaluation.classification == 'acceptable' %}style="background:#fff0dc;color:#b94700;"
+                {% endif %}>{{ evaluation.percentage|arabic_digits }}%</td>
+              <td class="result-summary-class {{ evaluation.classification }}"
+                {% if status.blocks_grant or evaluation.classification == 'weak' %}style="background:#fce8e8;color:#c0392b;"
+                {% elif evaluation.classification == 'excellent' %}style="background:#dff4eb;color:#247a61;"
+                {% elif evaluation.classification == 'good' %}style="background:#e7f1ff;color:#0d6efd;"
+                {% elif evaluation.classification == 'acceptable' %}style="background:#fff0dc;color:#b94700;"
+                {% endif %}>{{ status.label|arabic_pdf }}</td>
             </tr>
           </tbody>
         </table>

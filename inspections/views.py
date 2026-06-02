@@ -1882,7 +1882,7 @@ def evaluation_pdf(request, pk):
     # استخدم الكاش فقط للتقييمات المكتملة (المسودات قد تتغير)
     pdf_cache_key = None
     if evaluation.approval_status == 'completed':
-        pdf_cache_key = f'pdf_bytes:eval:{pk}'
+        pdf_cache_key = f'pdf_bytes:v2:eval:{pk}'
         cached_pdf = cache.get(pdf_cache_key)
         if cached_pdf is not None:
             response = HttpResponse(cached_pdf, content_type='application/pdf')
