@@ -47,6 +47,35 @@
             padding: clamp(14px, 2vw, 28px);
         }
 
+        .top-nav {
+            max-width: 1300px;
+            margin: 0 auto 14px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: flex-start;
+        }
+
+        .top-nav a {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            background: var(--surface);
+            color: var(--brand-strong);
+            font-weight: 700;
+            font-size: .9rem;
+            text-decoration: none;
+            box-shadow: 0 4px 14px rgba(23, 45, 33, 0.06);
+        }
+
+        .top-nav a:hover {
+            background: var(--brand-soft);
+            border-color: var(--brand);
+        }
+
         h1 {
             font-size: clamp(1.35rem, 2.5vw, 2rem);
             color: var(--brand-strong);
@@ -563,6 +592,11 @@
     </style>
 </head>
 <body>
+<nav class="top-nav" aria-label="روابط الاستمارة">
+    <a href="/">💧 الرئيسية</a>
+    <a href="{% url 'water_factory_classification' %}">🏭 لوحة التحكم</a>
+    <a href="{% url 'water_factory_classification' %}">📄 تقارير التصنيف</a>
+</nav>
 <div class="container">
     <h1>📋 استمارة تقييم وتصنيف مصانع مياه الشرب المعبأة</h1>
     <div class="sub">
@@ -590,9 +624,6 @@
                 <h2 id="facilityPanelTitle">بيانات المنشأة</h2>
                 <p>اختر مصنعًا مسجلًا لربط بياناته بهذه الاستمارة.</p>
             </div>
-            <div class="facility-actions">
-                <a class="link-button" href="{% url 'establishment_create' %}?next={% url 'water_factory_evaluation_form' %}">+ تسجيل مصنع جديد</a>
-            </div>
         </div>
 
         <div class="facility-grid">
@@ -618,7 +649,7 @@
                     {% endfor %}
                 </select>
                 <div id="emptyFacilityMessage" class="empty-facility{% if not factories %} is-visible{% endif %}">
-                    لا توجد مصانع مسجلة حاليًا. استخدم زر تسجيل مصنع جديد لإضافة بيانات المصنع أولًا.
+                    لا توجد مصانع مسجلة حاليًا.
                 </div>
             </div>
 
