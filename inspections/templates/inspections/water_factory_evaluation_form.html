@@ -88,6 +88,116 @@
             color: var(--muted);
         }
 
+        .facility-panel {
+            background: var(--surface-soft);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: 16px;
+            margin-bottom: 18px;
+        }
+
+        .facility-panel-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        .facility-panel h2 {
+            color: var(--brand-strong);
+            font-size: clamp(1.05rem, 1.6vw, 1.3rem);
+            margin-bottom: 4px;
+        }
+
+        .facility-panel p {
+            color: var(--muted);
+            font-size: 0.9rem;
+        }
+
+        .facility-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            flex: 0 0 auto;
+        }
+
+        .link-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 40px;
+            padding: 9px 14px;
+            border-radius: 10px;
+            background: var(--brand);
+            color: white;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: 0.2s;
+        }
+
+        .link-button:hover {
+            background: var(--brand-strong);
+        }
+
+        .facility-grid {
+            display: grid;
+            grid-template-columns: minmax(260px, 1.1fr) 2fr;
+            gap: 14px;
+            align-items: start;
+        }
+
+        .field-label {
+            display: block;
+            color: var(--brand-strong);
+            font-weight: 700;
+            font-size: 0.88rem;
+            margin-bottom: 6px;
+        }
+
+        .facility-details {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 8px;
+        }
+
+        .facility-detail {
+            background: var(--surface);
+            border: 1px solid #e4ece6;
+            border-radius: 10px;
+            padding: 10px;
+            min-height: 70px;
+        }
+
+        .facility-detail span {
+            display: block;
+            color: var(--muted);
+            font-size: 0.76rem;
+            margin-bottom: 4px;
+        }
+
+        .facility-detail strong {
+            display: block;
+            color: var(--text);
+            font-size: 0.9rem;
+            overflow-wrap: anywhere;
+        }
+
+        .empty-facility {
+            display: none;
+            background: #fff7ed;
+            border: 1px solid #fed7aa;
+            color: #9a3412;
+            border-radius: 10px;
+            padding: 12px;
+            margin-top: 10px;
+            font-size: 0.9rem;
+        }
+
+        .empty-facility.is-visible {
+            display: block;
+        }
+
         .table-scroll {
             width: 100%;
             overflow-x: auto;
@@ -335,6 +445,20 @@
                 gap: 6px;
             }
 
+            .facility-panel-header,
+            .facility-grid {
+                display: block;
+            }
+
+            .facility-actions {
+                margin-top: 10px;
+            }
+
+            .facility-details {
+                grid-template-columns: 1fr;
+                margin-top: 10px;
+            }
+
             .section-content {
                 padding: 10px;
                 overflow-x: visible;
@@ -449,6 +573,57 @@
         <span>📜 لائحة الاشتراطات الصحية 29/2016</span> <span>🌍 GSO 1025</span> <span>💧 GSO 987</span>
         <span>📘 Codex Alimentarius</span> <span>🔒 ISO 22000</span> <span>🧪 HACCP / GMP</span> <span>⚙️ PRPs</span>
     </div>
+
+    <section class="facility-panel" aria-labelledby="facilityPanelTitle">
+        <div class="facility-panel-header">
+            <div>
+                <h2 id="facilityPanelTitle">بيانات المنشأة</h2>
+                <p>اختر مصنعًا مسجلًا لربط بياناته بهذه الاستمارة.</p>
+            </div>
+            <div class="facility-actions">
+                <a class="link-button" href="{% url 'establishment_create' %}">+ تسجيل مصنع جديد</a>
+            </div>
+        </div>
+
+        <div class="facility-grid">
+            <div>
+                <label class="field-label" for="factorySelect">المصانع المسجلة</label>
+                <select id="factorySelect" name="factory_id">
+                    <option value="">اختر المصنع</option>
+                    {% for factory in factories %}
+                    <option
+                        value="{{ factory.id }}"
+                        data-number="{{ factory.establishment_no|default:'-' }}"
+                        data-name="{{ factory.commercial_name }}"
+                        data-activity="{{ factory.activity_type }}"
+                        data-license="{{ factory.license_no }}"
+                        data-reg="{{ factory.commercial_reg }}"
+                        data-manager="{{ factory.manager_name }}"
+                        data-phone="{{ factory.contact_phone }}"
+                        data-governorate="{{ factory.governorate.name_ar }}"
+                        data-wilayat="{{ factory.wilayat.name_ar }}"
+                    >
+                        {{ factory.establishment_no|default:'-' }} - {{ factory.commercial_name }}
+                    </option>
+                    {% endfor %}
+                </select>
+                <div id="emptyFacilityMessage" class="empty-facility{% if not factories %} is-visible{% endif %}">
+                    لا توجد مصانع مسجلة حاليًا. استخدم زر تسجيل مصنع جديد لإضافة بيانات المصنع أولًا.
+                </div>
+            </div>
+
+            <div class="facility-details" aria-live="polite">
+                <div class="facility-detail"><span>رقم المنشأة</span><strong id="facilityNumber">-</strong></div>
+                <div class="facility-detail"><span>اسم المصنع</span><strong id="facilityName">-</strong></div>
+                <div class="facility-detail"><span>النشاط</span><strong id="facilityActivity">-</strong></div>
+                <div class="facility-detail"><span>المحافظة / الولاية</span><strong id="facilityLocation">-</strong></div>
+                <div class="facility-detail"><span>رقم الترخيص</span><strong id="facilityLicense">-</strong></div>
+                <div class="facility-detail"><span>رقم السجل التجاري</span><strong id="facilityReg">-</strong></div>
+                <div class="facility-detail"><span>مسؤول الجودة</span><strong id="facilityManager">-</strong></div>
+                <div class="facility-detail"><span>رقم التواصل</span><strong id="facilityPhone">-</strong></div>
+            </div>
+        </div>
+    </section>
 
     <!-- جداول التصنيف -->
     <div class="table-scroll" aria-label="جدول نطاقات التصنيف">
@@ -808,9 +983,36 @@
         calculateTotal();
     }
 
+    function setText(id, value) {
+        document.getElementById(id).innerText = value || "-";
+    }
+
+    function updateFacilityDetails() {
+        const select = document.getElementById('factorySelect');
+        const selected = select.options[select.selectedIndex];
+        const hasSelection = Boolean(select.value);
+
+        setText('facilityNumber', hasSelection ? selected.dataset.number : '-');
+        setText('facilityName', hasSelection ? selected.dataset.name : '-');
+        setText('facilityActivity', hasSelection ? selected.dataset.activity : '-');
+        setText(
+            'facilityLocation',
+            hasSelection ? `${selected.dataset.governorate || '-'} / ${selected.dataset.wilayat || '-'}` : '-'
+        );
+        setText('facilityLicense', hasSelection ? selected.dataset.license : '-');
+        setText('facilityReg', hasSelection ? selected.dataset.reg : '-');
+        setText('facilityManager', hasSelection ? selected.dataset.manager : '-');
+        setText('facilityPhone', hasSelection ? selected.dataset.phone : '-');
+    }
+
     window.onload = () => {
         buildForms();
         calculateTotal();
+        const factorySelect = document.getElementById('factorySelect');
+        if (factorySelect) {
+            factorySelect.addEventListener('change', updateFacilityDetails);
+            updateFacilityDetails();
+        }
         document.getElementById('calcBtn').addEventListener('click', calculateTotal);
         document.getElementById('resetBtn').addEventListener('click', resetAll);
     };

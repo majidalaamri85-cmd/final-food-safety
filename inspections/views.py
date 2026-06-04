@@ -415,7 +415,30 @@ def water_factory_classification(request):
 
 @login_required
 def water_factory_evaluation_form(request):
-    return render(request, 'inspections/water_factory_evaluation_form.html')
+    factories = (
+        Establishment.objects.select_related('governorate', 'wilayat')
+        .filter(status='active')
+        .only(
+            'id',
+            'establishment_no',
+            'commercial_name',
+            'activity_type',
+            'license_no',
+            'commercial_reg',
+            'manager_name',
+            'contact_phone',
+            'governorate__name_ar',
+            'wilayat__name_ar',
+        )
+        .order_by('commercial_name', 'id')
+    )
+    return render(
+        request,
+        'inspections/water_factory_evaluation_form.html',
+        {
+            'factories': factories,
+        },
+    )
 
 
 def user_login(request):
