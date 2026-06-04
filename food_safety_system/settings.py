@@ -9,6 +9,7 @@ SECRET_KEY = config('SECRET_KEY', default='django-insecure-food-safety-system-de
 DEBUG = config('DEBUG', default=True, cast=bool)
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='127.0.0.1,localhost', cast=Csv())
 DATABASE_URL = config('DATABASE_URL', default='')
+DATABASE_REQUIRES_SSL = DATABASE_URL.startswith(('postgres://', 'postgresql://')) and not DEBUG
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -56,7 +57,7 @@ DATABASES = {
     'default': dj_database_url.config(
         default=DATABASE_URL or f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
         conn_max_age=600,
-        ssl_require=bool(DATABASE_URL) and not DEBUG,
+        ssl_require=DATABASE_REQUIRES_SSL,
     )
 }
 
