@@ -8,6 +8,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-food-safety-system-demo-key')
 DEBUG = config('DEBUG', default=True, cast=bool)
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='127.0.0.1,localhost', cast=Csv())
+DATABASE_URL = config('DATABASE_URL', default='')
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -53,9 +54,9 @@ WSGI_APPLICATION = 'food_safety_system.wsgi.application'
 
 DATABASES = {
     'default': dj_database_url.config(
-        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
+        default=DATABASE_URL or f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
         conn_max_age=600,
-        ssl_require=not DEBUG,
+        ssl_require=bool(DATABASE_URL) and not DEBUG,
     )
 }
 

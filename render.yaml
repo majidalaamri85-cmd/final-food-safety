@@ -27,7 +27,6 @@ services:
           name: food-safety-db
           property: connectionString
 
-  - type: pserv
-    name: food-safety-db
+databases:
+  - name: food-safety-db
     plan: free
-    ipAllowList: []
