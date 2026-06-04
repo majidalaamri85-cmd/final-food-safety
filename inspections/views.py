@@ -1195,6 +1195,9 @@ def evaluation_list(request):
         'evaluated_establishments_count': qs.values('establishment_id').distinct().count(),
         'evaluation_classification_chart': evaluation_classification_chart,
         'evaluation_governorate_chart': evaluation_governorate_chart,
+        'hide_establishments_nav': True,
+        'hide_water_nav': True,
+        'show_reports_nav': True,
     })
 
 
