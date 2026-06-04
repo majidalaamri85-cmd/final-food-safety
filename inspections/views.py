@@ -361,6 +361,58 @@ def home(request):
     return render(request, 'inspections/home.html', {'minimal_nav': True})
 
 
+def water_factory_classification(request):
+    classification_levels = [
+        {'grade': 'A+', 'range': '95-100%', 'risk': 'منخفض جداً', 'decision': 'اعتماد كامل'},
+        {'grade': 'A', 'range': '90-94%', 'risk': 'منخفض', 'decision': 'مؤهل'},
+        {'grade': 'B', 'range': '80-89%', 'risk': 'متوسط', 'decision': 'خطة تحسين'},
+        {'grade': 'C', 'range': '70-79%', 'risk': 'مرتفع', 'decision': 'إعادة تقييم'},
+        {'grade': 'D', 'range': 'أقل من 70%', 'risk': 'خطر عالي', 'decision': 'إيقاف أو تعليق'},
+    ]
+    risk_weights = [
+        {'level': 'حرج جداً', 'score': '10 نقاط'},
+        {'level': 'عالي', 'score': '7 نقاط'},
+        {'level': 'متوسط', 'score': '4 نقاط'},
+        {'level': 'منخفض', 'score': '2 نقطة'},
+    ]
+    assessment_sections = [
+        'البيانات الأساسية للمصنع',
+        'الموقع العام والمبنى الخارجي',
+        'مصدر المياه الخام',
+        'نظام معالجة المياه',
+        'التعبئة والإنتاج',
+        'النظافة والتطهير',
+        'مكافحة الآفات',
+        'النظافة الشخصية والعاملين',
+        'المختبر وضبط الجودة',
+        'المواصفات الكيميائية والميكروبية للمنتج النهائي',
+        'نظام HACCP',
+        'التخزين والنقل',
+        'التتبع وسحب المنتج',
+        'الوثائق والسجلات',
+    ]
+    critical_items = [
+        'وجود E. coli بالمياه',
+        'فشل التعقيم النهائي',
+        'تلوث المنتج النهائي',
+        'عدم صلاحية مصدر المياه',
+        'فشل نظام RO',
+        'وجود تسربات أو صدأ بالخزانات',
+        'عدم وجود برنامج تنظيف',
+        'استخدام مواد كيميائية غير معتمدة',
+        'غياب نظام HACCP',
+        'عدم وجود تتبع للمنتج',
+    ]
+    context = {
+        'minimal_nav': True,
+        'classification_levels': classification_levels,
+        'risk_weights': risk_weights,
+        'assessment_sections': assessment_sections,
+        'critical_items': critical_items,
+    }
+    return render(request, 'inspections/water_factory_classification.html', context)
+
+
 def user_login(request):
     if request.user.is_authenticated:
         return redirect('dashboard')

@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+
+{% block title %}تصنيف مصانع مياه الشرب المعبأة{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item active" aria-current="page">تصنيف مصانع مياه الشرب المعبأة</li>{% endblock %}
+
+{% block content %}
+
+<section class="water-service-hero mb-4">
+  <div>
+    <h1>تصنيف مصانع مياه الشرب المعبأة</h1>
+    <p>
+      صفحة مخصصة لاستعراض آلية تقييم وتصنيف مصانع مياه الشرب المعبأة وفق لائحة الاشتراطات الصحية
+      والمواصفات الخليجية وأنظمة سلامة الغذاء.
+    </p>
+  </div>
+  <div class="water-service-actions">
+    <a class="btn btn-success" href="/login/?next=/evaluations/new/">
+      <i class="fa-solid fa-clipboard-check me-1"></i>بدء تقييم
+    </a>
+    <a class="btn btn-outline-success" href="/login/?next=/establishments/new/">
+      <i class="fa-solid fa-building-circle-plus me-1"></i>تسجيل مصنع
+    </a>
+  </div>
+</section>
+
+<div class="row g-3 mb-4">
+  <div class="col-12 col-lg-7">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="page-header mb-3">
+          <h2>نطاقات التصنيف</h2>
+          <div class="sub">يعتمد القرار النهائي على النسبة المحققة ومستوى الخطورة.</div>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead>
+              <tr>
+                <th>التصنيف</th>
+                <th>النسبة</th>
+                <th>مستوى الخطورة</th>
+                <th>القرار</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in classification_levels %}
+              <tr>
+                <td><span class="water-grade">{{ item.grade }}</span></td>
+                <td>{{ item.range }}</td>
+                <td>{{ item.risk }}</td>
+                <td>{{ item.decision }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-lg-5">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="page-header mb-3">
+          <h2>أوزان الخطورة</h2>
+          <div class="sub">تستخدم الأوزان لاحتساب درجة البند حسب أثره على سلامة المياه.</div>
+        </div>
+        <div class="water-risk-list">
+          {% for item in risk_weights %}
+          <div class="water-risk-item">
+            <span>{{ item.level }}</span>
+            <strong>{{ item.score }}</strong>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-12 col-lg-7">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="page-header mb-3">
+          <h2>محاور الاستمارة</h2>
+          <div class="sub">المحاور الرئيسية التي تغطي دورة إنتاج مياه الشرب المعبأة.</div>
+        </div>
+        <div class="water-section-grid">
+          {% for section in assessment_sections %}
+          <div class="water-section-item">
+            <span>{{ forloop.counter }}</span>
+            <p>{{ section }}</p>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-lg-5">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="page-header mb-3">
+          <h2>بنود الإيقاف المباشر</h2>
+          <div class="sub">بنود حرجة تستدعي اتخاذ إجراء فوري عند عدم الاستيفاء.</div>
+        </div>
+        <ul class="water-critical-list">
+          {% for item in critical_items %}
+          <li><i class="fa-solid fa-triangle-exclamation"></i><span>{{ item }}</span></li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

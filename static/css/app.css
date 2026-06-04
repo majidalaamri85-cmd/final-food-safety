@@ -279,11 +279,135 @@ a:hover { color: var(--primary-dark); }
 .module-card-secondary .module-card-icon { background: #eef3ff; color: #3558d5; }
 .module-card-accent .module-card-icon { background: #fff1df; color: #c26a09; }
 .module-card-followup .module-card-icon { background: #e0f7fa; color: #00838f; }
+.module-card-water .module-card-icon { background: #e8f4fd; color: #0d6efd; }
 
 .module-card-primary:hover { border-color: #b7e0d1; }
 .module-card-secondary:hover { border-color: #c6d4fb; }
 .module-card-accent:hover { border-color: #f2ce9d; }
 .module-card-followup:hover { border-color: #9de2e8; }
+.module-card-water:hover { border-color: #a9d3ff; }
+
+/* ===================== WATER FACTORY SERVICE ===================== */
+.water-service-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-radius: 1rem;
+  padding: 1.4rem 1.2rem;
+  background: linear-gradient(135deg, #e8f4fd 0%, #ffffff 72%);
+  border: 1px solid #cfe4fb;
+}
+
+.water-service-hero h1 {
+  font-size: 1.55rem;
+  font-weight: 800;
+  margin-bottom: .45rem;
+}
+
+.water-service-hero p {
+  color: var(--muted);
+  margin: 0;
+  max-width: 760px;
+}
+
+.water-service-actions {
+  display: flex;
+  gap: .6rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.water-grade {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 32px;
+  border-radius: 8px;
+  background: #e8f4fd;
+  color: #0d6efd;
+  font-weight: 800;
+}
+
+.water-risk-list {
+  display: grid;
+  gap: .75rem;
+}
+
+.water-risk-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .8rem .9rem;
+  border: 1px solid #e6ecef;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.water-risk-item strong {
+  color: var(--primary-dark);
+  white-space: nowrap;
+}
+
+.water-section-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .75rem;
+}
+
+.water-section-item {
+  display: flex;
+  gap: .7rem;
+  align-items: center;
+  min-height: 58px;
+  padding: .75rem;
+  border: 1px solid #e6ecef;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.water-section-item span {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: #e8f7f2;
+  color: var(--primary-dark);
+  font-weight: 800;
+  flex: 0 0 auto;
+}
+
+.water-section-item p {
+  margin: 0;
+  font-size: .9rem;
+  color: var(--text);
+}
+
+.water-critical-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: .6rem;
+}
+
+.water-critical-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: .55rem;
+  padding: .7rem .75rem;
+  border-radius: 8px;
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.water-critical-list i {
+  margin-top: .25rem;
+}
 
 /* ===================== MODULE PLACEHOLDER ===================== */
 .placeholder-wrap {
@@ -634,6 +758,28 @@ input[type="file"].form-control-sm {
   /* module cards: صف واحد */
   .module-card {
     padding: 1rem;
+  }
+
+  .water-service-hero {
+    align-items: stretch;
+    flex-direction: column;
+    padding: 1rem;
+  }
+
+  .water-service-hero h1 {
+    font-size: 1.25rem;
+  }
+
+  .water-service-actions {
+    justify-content: stretch;
+  }
+
+  .water-service-actions .btn {
+    flex: 1 1 100%;
+  }
+
+  .water-section-grid {
+    grid-template-columns: 1fr;
   }
 }
 
