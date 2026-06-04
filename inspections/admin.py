@@ -13,6 +13,7 @@ from .models import (
     QualificationFollowUp,
     RequiredRecord,
     UserProfile,
+    WaterFactoryClassification,
     Wilayat,
 )
 
@@ -44,6 +45,13 @@ class EstablishmentAdmin(admin.ModelAdmin):
     list_display = ('establishment_no', 'commercial_name', 'activity_type', 'governorate', 'wilayat', 'status')
     list_filter = ('status', 'governorate', 'activity_type')
     search_fields = ('establishment_no', 'commercial_name', 'license_no', 'commercial_reg')
+
+
+@admin.register(WaterFactoryClassification)
+class WaterFactoryClassificationAdmin(admin.ModelAdmin):
+    list_display = ('establishment', 'classified_at', 'percentage', 'grade', 'decision', 'critical_count')
+    list_filter = ('grade', 'classified_at', 'establishment__governorate')
+    search_fields = ('establishment__commercial_name', 'establishment__license_no', 'establishment__commercial_reg')
 
 
 admin.site.register(Governorate)

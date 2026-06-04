@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load inspection_extras %}
 
 {% block title %}تصنيف مصانع مياه الشرب المعبأة{% endblock %}
 {% block breadcrumb %}<li class="breadcrumb-item active" aria-current="page">تصنيف مصانع مياه الشرب المعبأة</li>{% endblock %}
@@ -7,21 +8,117 @@
 
 <section class="water-service-hero mb-4">
   <div>
-    <h1>تصنيف مصانع مياه الشرب المعبأة</h1>
+    <h1>لوحة تحكم تصنيف مصانع مياه الشرب المعبأة</h1>
     <p>
-      صفحة مخصصة لاستعراض آلية تقييم وتصنيف مصانع مياه الشرب المعبأة وفق لائحة الاشتراطات الصحية
-      والمواصفات الخليجية وأنظمة سلامة الغذاء.
+      متابعة تصنيفات مصانع مياه الشرب المعبأة المحفوظة، وربطها بالمصانع المسجلة وتقارير كل منشأة.
     </p>
   </div>
   <div class="water-service-actions">
     <a class="btn btn-success" href="{% url 'water_factory_evaluation_form' %}">
-      <i class="fa-solid fa-clipboard-check me-1"></i>بدء تقييم
+      <i class="fa-solid fa-clipboard-check me-1"></i>بدء تصنيف جديد
     </a>
-    <a class="btn btn-outline-success" href="{% url 'establishment_create' %}">
+    <a class="btn btn-outline-success" href="{% url 'establishment_create' %}?next={% url 'water_factory_evaluation_form' %}">
       <i class="fa-solid fa-building-circle-plus me-1"></i>تسجيل مصنع
     </a>
   </div>
 </section>
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-lg-3">
+    <div class="kpi-card kpi-blue h-100">
+      <div class="kpi-icon"><i class="fa-solid fa-bottle-water"></i></div>
+      <div class="kpi-value">{{ total_water_classifications|arabic_digits }}</div>
+      <div class="kpi-label">إجمالي التصنيفات</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="kpi-card kpi-green h-100">
+      <div class="kpi-icon"><i class="fa-solid fa-industry"></i></div>
+      <div class="kpi-value">{{ classified_factories_count|arabic_digits }}</div>
+      <div class="kpi-label">مصانع مصنفة</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="kpi-card kpi-teal h-100">
+      <div class="kpi-icon"><i class="fa-solid fa-percent"></i></div>
+      <div class="kpi-value">{{ avg_water_percentage|floatformat:1|arabic_digits }}%</div>
+      <div class="kpi-label">متوسط النسبة</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="kpi-card kpi-purple h-100">
+      <div class="kpi-icon"><i class="fa-solid fa-building-circle-check"></i></div>
+      <div class="kpi-value">{{ available_factories_count|arabic_digits }}</div>
+      <div class="kpi-label">مصانع نشطة مسجلة</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-12 col-xl-5">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="page-header mb-3">
+          <h2>توزيع التصنيفات</h2>
+          <div class="sub">عدد التصنيفات المحفوظة حسب الدرجة.</div>
+        </div>
+        <div class="row g-2">
+          {% for item in classification_levels %}
+          <div class="col-6 col-md">
+            <div class="border rounded-3 p-3 text-center h-100">
+              <div class="water-grade mb-2">{{ item.grade }}</div>
+              <div class="fs-4 fw-bold text-success">{{ grade_counts|get_item:item.grade|default:0|arabic_digits }}</div>
+              <div class="small text-muted">{{ item.range }}</div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-xl-7">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="page-header mb-3">
+          <h2>أحدث تصنيفات مصانع المياه</h2>
+          <div class="sub">آخر النتائج المحفوظة والمرتبطة بتقارير المنشآت.</div>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead>
+              <tr>
+                <th>المصنع</th>
+                <th>التاريخ</th>
+                <th class="text-center">النسبة</th>
+                <th class="text-center">التصنيف</th>
+                <th>القرار</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in latest_water_classifications %}
+              <tr>
+                <td>
+                  <div class="fw-semibold">{{ item.establishment.commercial_name }}</div>
+                  <div class="small text-muted">{{ item.establishment.governorate.name_ar }} / {{ item.establishment.wilayat.name_ar }}</div>
+                </td>
+                <td>{{ item.classified_at|date:"Y/m/d H:i"|arabic_digits }}</td>
+                <td class="text-center">{{ item.percentage|arabic_digits }}%</td>
+                <td class="text-center"><span class="water-grade">{{ item.grade }}</span></td>
+                <td>{{ item.decision }}</td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="5" class="text-center text-muted py-4">لا توجد تصنيفات محفوظة بعد.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div class="row g-3 mb-4">
   <div class="col-12 col-lg-7">

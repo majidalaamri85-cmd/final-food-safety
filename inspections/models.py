@@ -374,6 +374,52 @@ class Evaluation(models.Model):
         self.save()
 
 
+class WaterFactoryClassification(models.Model):
+    GRADE_CHOICES = [
+        ('A+', 'A+'),
+        ('A', 'A'),
+        ('B', 'B'),
+        ('C', 'C'),
+        ('D', 'D'),
+    ]
+
+    establishment = models.ForeignKey(
+        Establishment,
+        verbose_name='مصنع مياه الشرب',
+        on_delete=models.CASCADE,
+        related_name='water_classifications',
+    )
+    inspector = models.ForeignKey(
+        User,
+        verbose_name='المفتش / المقيم',
+        on_delete=models.PROTECT,
+        related_name='water_factory_classifications',
+    )
+    classified_at = models.DateTimeField('تاريخ التصنيف', default=timezone.now)
+    total_possible_points = models.DecimalField('إجمالي النقاط الممكنة', max_digits=8, decimal_places=2, default=0)
+    total_earned_points = models.DecimalField('إجمالي النقاط المحققة', max_digits=8, decimal_places=2, default=0)
+    percentage = models.DecimalField('النسبة المئوية', max_digits=5, decimal_places=2, default=0)
+    grade = models.CharField('التصنيف', max_length=2, choices=GRADE_CHOICES)
+    decision = models.CharField('قرار المفتش', max_length=255)
+    critical_count = models.PositiveIntegerField('عدد المخالفات الحرجة', default=0)
+    items_payload = models.JSONField('تفاصيل البنود', default=list, blank=True)
+    notes = models.TextField('ملاحظات عامة', blank=True)
+    created_at = models.DateTimeField('تاريخ الحفظ', auto_now_add=True)
+
+    class Meta:
+        ordering = ['-classified_at', '-created_at']
+        verbose_name = 'تصنيف مصنع مياه الشرب'
+        verbose_name_plural = 'تصنيفات مصانع مياه الشرب'
+        indexes = [
+            models.Index(fields=['classified_at'], name='water_classified_at_idx'),
+            models.Index(fields=['grade'], name='water_grade_idx'),
+            models.Index(fields=['establishment', 'classified_at'], name='water_est_classified_idx'),
+        ]
+
+    def __str__(self):
+        return f'{self.establishment.commercial_name} - {self.grade} - {self.percentage}%'
+
+
 class QualificationFollowUp(models.Model):
     STATUS_CHOICES = [
         ('not_started', 'لم يبدأ'),

@@ -8,6 +8,7 @@ def establishment_detail(request, pk):
     establishment = get_object_or_404(Establishment, pk=pk)
     qualification = getattr(establishment.qualification_followups.first(), 'current_status', None)
     haccp_files = establishment.haccp_files.all()
+    water_classifications = establishment.water_classifications.select_related('inspector').order_by('-classified_at', '-created_at')
     if request.method == 'POST':
         form = HACCPFileForm(request.POST, request.FILES)
         if form.is_valid():
@@ -22,13 +23,16 @@ def establishment_detail(request, pk):
         'establishment': establishment,
         'qualification': qualification,
         'haccp_files': haccp_files,
+        'water_classifications': water_classifications,
         'form': form,
     })
 import os
 import hashlib
+import json
 import tempfile
 import zipfile
 from collections import OrderedDict
+from decimal import Decimal, InvalidOperation
 from io import BytesIO, StringIO
 
 from django.conf import settings
@@ -85,6 +89,7 @@ from .models import (
     QualificationFollowUp,
     RequiredRecord,
     UserProfile,
+    WaterFactoryClassification,
     Wilayat,
 )
 
@@ -361,6 +366,25 @@ def home(request):
     return render(request, 'inspections/home.html', {'minimal_nav': True})
 
 
+def _get_allowed_establishments(user, queryset=None):
+    if queryset is None:
+        queryset = Establishment.objects.all()
+    queryset, _ = _apply_rbac(queryset, None, _get_profile(user))
+    return queryset
+
+
+def _get_allowed_water_classifications(user, queryset=None):
+    if queryset is None:
+        queryset = WaterFactoryClassification.objects.all()
+    profile = _get_profile(user)
+    if profile and profile.role == 'manager' and profile.governorate_id:
+        queryset = queryset.filter(establishment__governorate=profile.governorate)
+    elif profile and profile.role == 'inspector':
+        queryset = queryset.filter(inspector=profile.user)
+    return queryset
+
+
+@login_required
 def water_factory_classification(request):
     classification_levels = [
         {'grade': 'A+', 'range': '95-100%', 'risk': 'منخفض جداً', 'decision': 'اعتماد كامل'},
@@ -404,19 +428,43 @@ def water_factory_classification(request):
         'عدم وجود تتبع للمنتج',
     ]
     context = {
-        'minimal_nav': True,
         'classification_levels': classification_levels,
         'risk_weights': risk_weights,
         'assessment_sections': assessment_sections,
         'critical_items': critical_items,
     }
+    water_qs = _get_allowed_water_classifications(
+        request.user,
+        WaterFactoryClassification.objects.select_related(
+            'establishment',
+            'establishment__governorate',
+            'establishment__wilayat',
+            'inspector',
+        ),
+    )
+    allowed_establishments = _get_allowed_establishments(request.user)
+    grade_counts = {
+        row['grade']: row['total']
+        for row in water_qs.values('grade').annotate(total=Count('id'))
+    }
+    context.update({
+        'total_water_classifications': water_qs.count(),
+        'classified_factories_count': water_qs.values('establishment_id').distinct().count(),
+        'available_factories_count': allowed_establishments.filter(status='active').count(),
+        'avg_water_percentage': water_qs.aggregate(avg=Avg('percentage'))['avg'] or 0,
+        'latest_water_classifications': water_qs.order_by('-classified_at', '-created_at')[:10],
+        'grade_counts': grade_counts,
+    })
     return render(request, 'inspections/water_factory_classification.html', context)
 
 
 @login_required
 def water_factory_evaluation_form(request):
     factories = (
-        Establishment.objects.select_related('governorate', 'wilayat')
+        _get_allowed_establishments(
+            request.user,
+            Establishment.objects.select_related('governorate', 'wilayat'),
+        )
         .filter(status='active')
         .only(
             'id',
@@ -432,6 +480,57 @@ def water_factory_evaluation_form(request):
         )
         .order_by('commercial_name', 'id')
     )
+
+    if request.method == 'POST':
+        factory_id = request.POST.get('factory_id')
+        if not factory_id:
+            messages.error(request, 'يرجى اختيار المصنع قبل حفظ التصنيف.')
+            return redirect('water_factory_evaluation_form')
+
+        establishment = get_object_or_404(factories, pk=factory_id)
+        try:
+            total_possible = Decimal(request.POST.get('total_possible_points', '0') or '0')
+            total_earned = Decimal(request.POST.get('total_earned_points', '0') or '0')
+            percentage = Decimal(request.POST.get('percentage', '0') or '0')
+        except InvalidOperation:
+            messages.error(request, 'تعذر حفظ التصنيف بسبب قيمة رقمية غير صحيحة.')
+            return redirect('water_factory_evaluation_form')
+
+        grade = request.POST.get('grade', '').strip()
+        valid_grades = {value for value, _ in WaterFactoryClassification.GRADE_CHOICES}
+        if grade not in valid_grades:
+            messages.error(request, 'تعذر حفظ التصنيف بسبب تصنيف نهائي غير صحيح.')
+            return redirect('water_factory_evaluation_form')
+
+        try:
+            critical_count = int(request.POST.get('critical_count', '0') or 0)
+        except ValueError:
+            critical_count = 0
+
+        try:
+            items_payload = json.loads(request.POST.get('items_payload', '[]') or '[]')
+            if not isinstance(items_payload, list):
+                items_payload = []
+        except json.JSONDecodeError:
+            items_payload = []
+
+        WaterFactoryClassification.objects.create(
+            establishment=establishment,
+            inspector=request.user,
+            total_possible_points=total_possible,
+            total_earned_points=total_earned,
+            percentage=percentage,
+            grade=grade,
+            decision=request.POST.get('decision', '').strip() or '-',
+            critical_count=max(0, critical_count),
+            items_payload=items_payload,
+        )
+        messages.success(
+            request,
+            f'تم حفظ تصنيف مصنع المياه {establishment.commercial_name}. التصنيف: {grade} - النسبة: {percentage}%',
+        )
+        return redirect('water_factory_classification')
+
     return render(
         request,
         'inspections/water_factory_evaluation_form.html',
@@ -803,10 +902,17 @@ def establishment_list(request):
 
 @login_required
 def establishment_create(request):
+    next_url = (request.GET.get('next') or request.POST.get('next') or '').strip()
     form = EstablishmentForm(request.POST or None, request.FILES or None)
     if form.is_valid():
         obj = form.save()
         messages.success(request, f'تم حفظ المنشأة بنجاح. رقم المنشأة: {obj.establishment_no}')
+        if next_url and url_has_allowed_host_and_scheme(
+            url=next_url,
+            allowed_hosts={request.get_host()},
+            require_https=request.is_secure(),
+        ):
+            return redirect(next_url)
         return redirect('establishment_list')
     reference_data = _get_reference_data()
     return render(request, 'inspections/establishment_form.html', {
@@ -814,6 +920,7 @@ def establishment_create(request):
         'title': 'إضافة منشأة',
         'wilayats': reference_data['wilayats'],
         'isic_activities': ISIC4_FOOD_ACTIVITIES,
+        'next': next_url,
     })
 
 
@@ -1030,7 +1137,7 @@ def evaluation_create(request):
 
     if not default_establishment:
         messages.error(request, 'لا توجد منشآت متاحة لإنشاء تقييم. يرجى إضافة منشأة أولاً.')
-        return redirect('establishment_create')
+        return redirect('/establishments/new/?next=/evaluations/new/')
 
     if request.method == 'POST':
         # Handle form submission

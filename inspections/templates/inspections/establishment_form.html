@@ -25,6 +25,7 @@
   <div class="card-body">
     <form method="post" enctype="multipart/form-data">
       {% csrf_token %}
+      <input type="hidden" name="next" value="{{ next }}">
       {% if form.non_field_errors %}
         <div class="alert alert-danger">
           {{ form.non_field_errors }}

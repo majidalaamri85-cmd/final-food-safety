@@ -574,6 +574,16 @@
         <span>📘 Codex Alimentarius</span> <span>🔒 ISO 22000</span> <span>🧪 HACCP / GMP</span> <span>⚙️ PRPs</span>
     </div>
 
+    <form method="post" id="waterClassificationForm">
+    {% csrf_token %}
+    <input type="hidden" name="total_possible_points" id="totalPossibleField" value="0">
+    <input type="hidden" name="total_earned_points" id="totalEarnedField" value="0">
+    <input type="hidden" name="percentage" id="percentageField" value="0">
+    <input type="hidden" name="grade" id="gradeField" value="D">
+    <input type="hidden" name="decision" id="decisionField" value="-">
+    <input type="hidden" name="critical_count" id="criticalCountField" value="0">
+    <input type="hidden" name="items_payload" id="itemsPayloadField" value="[]">
+
     <section class="facility-panel" aria-labelledby="facilityPanelTitle">
         <div class="facility-panel-header">
             <div>
@@ -581,7 +591,7 @@
                 <p>اختر مصنعًا مسجلًا لربط بياناته بهذه الاستمارة.</p>
             </div>
             <div class="facility-actions">
-                <a class="link-button" href="{% url 'establishment_create' %}">+ تسجيل مصنع جديد</a>
+                <a class="link-button" href="{% url 'establishment_create' %}?next={% url 'water_factory_evaluation_form' %}">+ تسجيل مصنع جديد</a>
             </div>
         </div>
 
@@ -654,8 +664,10 @@
     </div>
     <div class="action-bar">
         <button id="calcBtn" type="button">📊 احتساب النتيجة النهائية</button>
+        <button id="saveBtn" type="submit">💾 حفظ التصنيف</button>
         <button id="resetBtn" class="reset-btn" type="button">🔄 إعادة تعيين جميع البنود</button>
     </div>
+    </form>
     <footer>تقييم وفقاً للمتطلبات التشغيلية الأولية PRPs ومعايير GSO / HACCP - البنود الحرجة تؤدي إلى رصد المخالفات الحرجة</footer>
 </div>
 
@@ -913,7 +925,7 @@
                 tdNotes.appendChild(noteInput);
                 tr.appendChild(tdNotes);
                 tbody.appendChild(tr);
-                allItems.push({ item, select: optionSelect, maxPoint, scoreSpan, severity: item.severity, weight: maxPoint });
+                allItems.push({ item, select: optionSelect, noteInput, maxPoint, scoreSpan, severity: item.severity, weight: maxPoint, section: section.name });
                 globalIndex++;
             });
             content.appendChild(table);
@@ -973,6 +985,35 @@
         document.getElementById('criticalCount').innerText = criticalViolations;
         document.getElementById('inspectorDecision').innerText = decision;
         if(criticalViolations > 5) document.getElementById('inspectorDecision').innerText = "إيقاف فوري - مخالفات حرجة متعددة";
+        syncResultFields(totalWeightedPossible, totalWeightedEarned, percentFinal, rank, document.getElementById('inspectorDecision').innerText, criticalViolations);
+    }
+
+    function syncResultFields(totalPossible, totalEarned, percent, grade, decision, criticalCount) {
+        document.getElementById('totalPossibleField').value = totalPossible.toFixed(2);
+        document.getElementById('totalEarnedField').value = totalEarned.toFixed(2);
+        document.getElementById('percentageField').value = percent.toFixed(2);
+        document.getElementById('gradeField').value = grade;
+        document.getElementById('decisionField').value = decision;
+        document.getElementById('criticalCountField').value = String(criticalCount);
+        document.getElementById('itemsPayloadField').value = JSON.stringify(buildItemsPayload());
+    }
+
+    function buildItemsPayload() {
+        return allItems.map((it, index) => {
+            const value = it.select.value;
+            const percent = value === "-1" ? null : parseInt(value, 10);
+            const earned = percent === null ? null : (percent / 100) * it.maxPoint;
+            return {
+                index: index + 1,
+                section: it.section,
+                text: it.item.text,
+                severity: it.severity,
+                maxPoint: it.maxPoint,
+                selectedValue: value,
+                earnedPoint: earned,
+                notes: it.noteInput.value || "",
+            };
+        });
     }
 
     function resetAll() {
@@ -1013,6 +1054,15 @@
             factorySelect.addEventListener('change', updateFacilityDetails);
             updateFacilityDetails();
         }
+        document.getElementById('waterClassificationForm').addEventListener('submit', function(event) {
+            if (!factorySelect || !factorySelect.value) {
+                event.preventDefault();
+                alert('يرجى اختيار المصنع قبل حفظ التصنيف.');
+                factorySelect.focus();
+                return;
+            }
+            calculateTotal();
+        });
         document.getElementById('calcBtn').addEventListener('click', calculateTotal);
         document.getElementById('resetBtn').addEventListener('click', resetAll);
     };
