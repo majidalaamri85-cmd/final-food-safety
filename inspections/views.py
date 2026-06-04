@@ -981,6 +981,8 @@ def establishment_create(request):
         'wilayats': reference_data['wilayats'],
         'isic_activities': ISIC4_FOOD_ACTIVITIES,
         'next': next_url,
+        'hide_evaluations_nav': True,
+        'hide_water_nav': True,
         'hide_nav_actions': True,
     })
     return render(request, 'inspections/establishment_form.html', context)

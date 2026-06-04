@@ -357,6 +357,49 @@ a:hover { color: var(--primary-dark); }
 .module-card-followup:hover { border-color: #9de2e8; }
 .module-card-water:hover { border-color: #a9d3ff; }
 
+.workflow-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: .75rem;
+  margin-bottom: 1.2rem;
+}
+
+.workflow-step {
+  position: relative;
+  min-height: 108px;
+  padding: 1rem;
+  border: 1px solid rgba(195, 215, 206, .78);
+  border-radius: var(--radius);
+  background: rgba(255,255,255,.9);
+  box-shadow: var(--shadow);
+}
+
+.workflow-step strong {
+  display: block;
+  margin-bottom: .35rem;
+  color: var(--primary-dark);
+  font-size: 1rem;
+}
+
+.workflow-step p {
+  margin: 0;
+  color: var(--muted);
+  font-size: .86rem;
+}
+
+.workflow-step span {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: .65rem;
+  border-radius: var(--radius);
+  background: var(--bs-success-bg-subtle);
+  color: var(--primary-dark);
+  font-weight: 800;
+}
+
 /* ===================== WATER FACTORY SERVICE ===================== */
 .water-service-hero {
   display: flex;
@@ -671,6 +714,10 @@ a:hover { color: var(--primary-dark); }
     font-size: 1.3rem;
   }
 
+  .workflow-strip {
+    grid-template-columns: 1fr;
+  }
+
   .module-card h2 {
     font-size: 1.02rem;
   }
@@ -719,6 +766,10 @@ a:hover { color: var(--primary-dark); }
   .navbar .navbar-nav .btn {
     width: 100%;
     text-align: center;
+  }
+
+  .workflow-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

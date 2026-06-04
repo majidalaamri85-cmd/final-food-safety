@@ -10,10 +10,10 @@
 
 <style>
   .evaluation-header {
-    background: linear-gradient(135deg, #138a4c, #0f6b4b);
+    background: linear-gradient(135deg, var(--primary-dark), var(--primary));
     color: white;
     padding: 20px;
-    border-radius: 12px 12px 0 0;
+    border-radius: var(--radius) var(--radius) 0 0;
     margin-bottom: 0;
   }
 
@@ -22,10 +22,17 @@
     font-size: 24px;
   }
 
+  .evaluation-kicker {
+    margin: 5px 0 0 0;
+    color: rgba(255,255,255,.86);
+    font-size: 14px;
+  }
+
   .evaluation-container {
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
     overflow: hidden;
   }
 
@@ -33,16 +40,29 @@
     padding: 20px;
   }
 
+  .evaluation-section-title {
+    color: var(--primary-dark);
+    border-bottom: 2px solid var(--primary);
+    padding-bottom: 8px;
+    margin: 0 0 16px;
+    font-size: 1.25rem;
+    font-weight: 800;
+  }
+
+  .evaluation-section-title.mt {
+    margin-top: 30px;
+  }
+
   .section-header {
-    background: #e8f5ee;
-    color: #0f6b4b;
+    background: #eef6f3;
+    color: var(--primary-dark);
     padding: 14px;
     font-weight: bold;
     cursor: pointer;
     font-size: 17px;
-    border-top: 1px solid #ddd;
+    border-top: 1px solid var(--border);
     margin-top: 12px;
-    border-radius: 8px;
+    border-radius: var(--radius);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -50,7 +70,7 @@
   }
 
   .section-header:hover {
-    background: #d0e8e0;
+    background: var(--bs-success-bg-subtle);
   }
 
   .section-header .toggle-icon {
@@ -60,8 +80,8 @@
   .section-content {
     display: none;
     padding: 15px;
-    background: #fff;
-    border-bottom: 1px solid #ddd;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
   }
 
   .section-content.active {
@@ -69,7 +89,7 @@
   }
 
   .evaluation-item {
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid #edf3f0;
     padding: 15px 0;
   }
 
@@ -102,10 +122,10 @@
 
   .non-compliance-section {
     display: none;
-    background: #fff8f8;
-    border: 1px solid #f0b4b4;
+    background: var(--danger-soft);
+    border: 1px solid #f6caca;
     padding: 12px;
-    border-radius: 8px;
+    border-radius: var(--radius);
     margin-top: 10px;
   }
 
@@ -124,8 +144,8 @@
   .non-compliance-section input[type="file"] {
     width: 100%;
     padding: 9px;
-    border: 1px solid #ccc;
-    border-radius: 8px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius);
     box-sizing: border-box;
     font-family: inherit;
     margin-bottom: 10px;
@@ -136,10 +156,10 @@
   }
 
   .result-box {
-    background: #f0faf5;
-    border: 1px solid #b7dfc9;
+    background: var(--bs-success-bg-subtle);
+    border: 1px solid var(--bs-success-border-subtle);
     padding: 15px;
-    border-radius: 10px;
+    border-radius: var(--radius);
     margin-top: 20px;
     font-weight: bold;
   }
@@ -155,7 +175,7 @@
   .buttons-group a {
     border: none;
     padding: 12px 22px;
-    border-radius: 8px;
+    border-radius: var(--radius);
     cursor: pointer;
     font-size: 15px;
     font-family: inherit;
@@ -172,7 +192,7 @@
   }
 
   .btn-submit {
-    background: #0f6b4b;
+    background: var(--primary);
     color: white;
   }
 
@@ -182,7 +202,7 @@
   }
 
   .btn-calculate {
-    background: #1d7ed0;
+    background: var(--accent);
     color: white;
   }
 
@@ -192,15 +212,16 @@
   }
 
   .establishment-info {
-    background: #f8f9fa;
+    background: var(--surface-muted);
     padding: 15px;
-    border-radius: 8px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
     margin-bottom: 20px;
   }
 
   .establishment-info h5 {
     margin-top: 0;
-    color: #0f6b4b;
+    color: var(--primary-dark);
   }
 
   .info-grid {
@@ -215,7 +236,7 @@
 
   .info-label {
     font-weight: bold;
-    color: #555;
+    color: var(--muted);
   }
 
   .form-grid {
@@ -239,8 +260,8 @@
   .form-grid input,
   .form-grid select {
     padding: 9px;
-    border: 1px solid #ccc;
-    border-radius: 8px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius);
     box-sizing: border-box;
     font-family: inherit;
   }
@@ -248,8 +269,12 @@
   .form-grid input:focus,
   .form-grid select:focus {
     outline: none;
-    border-color: #0f6b4b;
-    box-shadow: 0 0 0 3px rgba(15, 107, 75, 0.1);
+    border-color: var(--primary-light);
+    box-shadow: 0 0 0 3px rgba(35, 134, 103, 0.14);
+  }
+
+  .form-grid-full {
+    grid-column: 1/-1;
   }
 
   @media (max-width: 768px) {
@@ -266,7 +291,7 @@
 <div class="evaluation-container">
   <div class="evaluation-header">
     <h1>استمارة تقييم منشأة غذائية</h1>
-    <p style="margin: 5px 0 0 0; font-size: 14px;">مركز سلامة وجودة الغذاء</p>
+    <p class="evaluation-kicker">مركز سلامة وجودة الغذاء</p>
   </div>
 
   <div class="evaluation-content">
@@ -274,7 +299,7 @@
       {% csrf_token %}
 
       <!-- Establishment Section -->
-      <h2 style="color: #0f6b4b; border-bottom: 2px solid #0f6b4b; padding-bottom: 8px;">بيانات المنشأة</h2>
+      <h2 class="evaluation-section-title">بيانات المنشأة</h2>
 
       <div class="form-grid">
         <div>
@@ -287,7 +312,7 @@
           {{ form.visit_date }}
           {% if form.visit_date.errors %}<div class="text-danger small">{{ form.visit_date.errors }}</div>{% endif %}
         </div>
-        <div class="form-grid" style="grid-column: 1/-1;">
+        <div class="form-grid form-grid-full">
           <label for="{{ form.notes.id_for_label }}">{{ form.notes.label }}</label>
           {{ form.notes }}
           {% if form.notes.errors %}<div class="text-danger small">{{ form.notes.errors }}</div>{% endif %}
@@ -295,7 +320,7 @@
       </div>
 
       <!-- Evaluation Criteria Sections -->
-      <h2 style="color: #0f6b4b; border-bottom: 2px solid #0f6b4b; padding-bottom: 8px; margin-top: 30px;">بنود التقييم</h2>
+      <h2 class="evaluation-section-title mt">بنود التقييم</h2>
 
       <div id="sectionsContainer">
         {% for section in sections %}
