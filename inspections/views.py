@@ -413,6 +413,11 @@ def water_factory_classification(request):
     return render(request, 'inspections/water_factory_classification.html', context)
 
 
+@login_required
+def water_factory_evaluation_form(request):
+    return render(request, 'inspections/water_factory_evaluation_form.html')
+
+
 def user_login(request):
     if request.user.is_authenticated:
         return redirect('dashboard')

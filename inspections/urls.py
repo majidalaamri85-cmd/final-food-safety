@@ -7,6 +7,7 @@ urlpatterns = [
     path('logout/', views.user_logout, name='user_logout'),
     path('dashboard/', views.dashboard, name='dashboard'),
     path('water-factory-classification/', views.water_factory_classification, name='water_factory_classification'),
+    path('water-factory-classification/evaluation/', views.water_factory_evaluation_form, name='water_factory_evaluation_form'),
     path('qualification-followups/', views.qualification_followup_list, name='qualification_followup_list'),
     path('establishments/', views.establishment_list, name='establishment_list'),
     path('establishments/new/', views.establishment_create, name='establishment_create'),

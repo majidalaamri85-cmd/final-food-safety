@@ -1,0 +1,613 @@
+﻿<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>استمارة تقييم وتصنيف مصانع مياه الشرب المعبأة - النظام الإلكتروني</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Tahoma', 'Arial', sans-serif;
+            background: #f0f7f0;
+            color: #1e2a1f;
+            padding: 20px;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1300px;
+            margin: auto;
+            background: white;
+            border-radius: 32px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+            padding: 20px 24px 40px;
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            color: #0a4b1a;
+            border-right: 8px solid #2e7d32;
+            padding-right: 20px;
+            margin-bottom: 10px;
+        }
+
+        .sub {
+            color: #2c5e2e;
+            margin-bottom: 25px;
+            border-bottom: 2px solid #c8e6c9;
+            padding-bottom: 12px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: baseline;
+        }
+
+        .references {
+            background: #eef5ee;
+            padding: 12px 18px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            margin-bottom: 25px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .references span {
+            background: white;
+            padding: 4px 12px;
+            border-radius: 30px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        /* rating table */
+        .rating-table, .points-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 0.9rem;
+            background: #fefef7;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+
+        .rating-table th, .rating-table td, .points-table th, .points-table td {
+            border: 1px solid #cfe3cf;
+            padding: 10px 8px;
+            text-align: center;
+        }
+
+        .rating-table th, .points-table th {
+            background: #d0e7d0;
+            color: #1a3b1a;
+        }
+
+        .section-card {
+            background: #ffffff;
+            margin-top: 28px;
+            border-radius: 24px;
+            box-shadow: 0 6px 14px rgba(0,0,0,0.05);
+            overflow: hidden;
+            border: 1px solid #ddebe0;
+        }
+
+        .section-header {
+            background: #e9f3e9;
+            padding: 16px 24px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1.3rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: 0.2s;
+            border-bottom: 1px solid transparent;
+        }
+
+        .section-header:hover {
+            background: #d9e9d9;
+        }
+
+        .section-header .toggle-icon {
+            font-size: 1.7rem;
+            font-weight: normal;
+        }
+
+        .section-content {
+            display: none;
+            padding: 16px 20px;
+            background: #fefef9;
+            border-top: 1px solid #cde0cd;
+            overflow-x: auto;
+        }
+
+        .section-content.open {
+            display: block;
+        }
+
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+
+        .items-table th, .items-table td {
+            border: 1px solid #cbdcc7;
+            padding: 10px 8px;
+            vertical-align: middle;
+        }
+
+        .items-table th {
+            background: #eef3ea;
+            font-weight: 600;
+        }
+
+        select, input.score-input {
+            padding: 6px 8px;
+            border-radius: 12px;
+            border: 1px solid #aac7aa;
+            background: white;
+            font-family: inherit;
+            font-size: 0.85rem;
+            width: auto;
+            min-width: 90px;
+            text-align: center;
+        }
+
+        .score-cell {
+            font-weight: bold;
+            text-align: center;
+            background: #f9fff7;
+        }
+
+        .severity-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 40px;
+            font-size: 0.7rem;
+            font-weight: bold;
+        }
+
+        .crit-high { background: #ffebee; color: #b71c1c; }
+        .crit-veryhigh { background: #ffccbc; color: #bf360c; }
+        .crit-medium { background: #fff3e0; color: #e65100; }
+        .crit-low { background: #e8f0e8; color: #2e7d32; }
+
+        .summary-box {
+            background: #e2f0e0;
+            border-radius: 28px;
+            padding: 20px;
+            margin: 35px 0 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: space-between;
+        }
+
+        .summary-item {
+            background: white;
+            border-radius: 24px;
+            padding: 12px 18px;
+            min-width: 150px;
+            text-align: center;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+        }
+
+        .summary-label {
+            font-size: 0.85rem;
+            color: #2b5e2b;
+        }
+
+        .summary-value {
+            font-size: 1.9rem;
+            font-weight: bold;
+            color: #1b4d1b;
+        }
+
+        button {
+            background: #2e7d32;
+            border: none;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 40px;
+            font-size: 1rem;
+            cursor: pointer;
+            margin: 10px 5px;
+            transition: 0.2s;
+        }
+
+        button:hover {
+            background: #1b5e20;
+        }
+
+        .reset-btn {
+            background: #8d6e63;
+        }
+
+        .decision {
+            font-size: 1.2rem;
+            font-weight: bold;
+            padding: 12px;
+            border-radius: 28px;
+            text-align: center;
+        }
+
+        footer {
+            font-size: 0.7rem;
+            text-align: center;
+            margin-top: 30px;
+            color: #6d8f6d;
+        }
+
+        @media (max-width: 700px) {
+            .container { padding: 15px; }
+            .items-table th, .items-table td { font-size: 0.7rem; padding: 6px 4px; }
+            select, input.score-input { min-width: 65px; font-size: 0.7rem; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>📋 استمارة تقييم وتصنيف مصانع مياه الشرب المعبأة</h1>
+    <div class="sub">
+        <span>🇴🇲 نظام التصنيف الوطني المبني على المخاطر</span>
+        <span>📅 تحديث تلقائي للدرجات</span>
+    </div>
+    <div class="references">
+        <span>📜 لائحة الاشتراطات الصحية 29/2016</span> <span>🌍 GSO 1025</span> <span>💧 GSO 987</span>
+        <span>📘 Codex Alimentarius</span> <span>🔒 ISO 22000</span> <span>🧪 HACCP / GMP</span> <span>⚙️ PRPs</span>
+    </div>
+
+    <!-- جداول التصنيف -->
+    <table class="rating-table">
+        <thead><tr><th>التصنيف</th><th>النسبة</th><th>مستوى الخطورة</th><th>القرار</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>A+</td><td>95-100%</td><td>منخفض جداً</td><td>اعتماد كامل</td></tr>
+            <tr><td>A</td><td>90-94%</td><td>منخفض</td><td>مؤهل</td></tr>
+            <tr><td>B</td><td>80-89%</td><td>متوسط</td><td>خطة تحسين</td></tr>
+            <tr><td>C</td><td>70-79%</td><td>مرتفع</td><td>إعادة تقييم</td></tr>
+            <tr><td>D</td><td>&lt;70%</td><td>خطر عالي</td><td>إيقاف أو تعليق</td></tr>
+        </tbody>
+    </table>
+
+    <!-- سيتم جمع جميع البنود ديناميكيًا عبر js -->
+    <div id="sectionsContainer"></div>
+
+    <!-- ملخص النتيجة النهائية -->
+    <div class="summary-box" id="summaryPanel">
+        <div class="summary-item"><div class="summary-label">إجمالي النقاط الممكنة (مرجحة)</div><div class="summary-value" id="totalWeightedPossible">0</div></div>
+        <div class="summary-item"><div class="summary-label">إجمالي النقاط المحققة (مرجحة)</div><div class="summary-value" id="totalWeightedEarned">0</div></div>
+        <div class="summary-item"><div class="summary-label">النسبة المئوية</div><div class="summary-value" id="finalPercent">0%</div></div>
+        <div class="summary-item"><div class="summary-label">التصنيف النهائي</div><div class="summary-value" id="finalRank">-</div></div>
+        <div class="summary-item"><div class="summary-label">المخالفات الحرجة</div><div class="summary-value" id="criticalCount">0</div></div>
+        <div class="summary-item"><div class="summary-label">قرار المفتش</div><div class="summary-value" id="inspectorDecision">-</div></div>
+    </div>
+    <div style="display: flex; gap: 10px; justify-content: center;">
+        <button id="calcBtn">📊 احتساب النتيجة النهائية</button>
+        <button id="resetBtn" class="reset-btn">🔄 إعادة تعيين جميع البنود</button>
+    </div>
+    <footer>تقييم وفقاً للمتطلبات التشغيلية الأولية PRPs ومعايير GSO / HACCP - البنود الحرجة تؤدي إلى رصد المخالفات الحرجة</footer>
+</div>
+
+<script>
+    // --------------------------------------------------------------
+    // تعريف جميع الأقسام والبنود بناءً على الاستمارة الأصلية (تم تضمين كامل البنود)
+    // لكل بند: id فريد, نص السؤال, مستوى الخطورة (حرج جداً/عالي/متوسط/منخفض), الوزن, حالة افتراضية (none = غير مستوفي)
+    // الوزن: حرج جداً=10, عالي=7, متوسط=4, منخفض=2
+    // الدرجة المحققة يتم حسابها بناءً على اختيار: مستوفي (100%) , مستوفي جزئياً (50%) , غير مستوفي (0%) , لا ينطبق (يستبعد)
+    // --------------------------------------------------------------
+    const severityWeight = { "حرج جداً": 10, "عالي": 7, "متوسط": 4, "منخفض": 2 };
+    
+    // تعريف الأقسام والبنود (كل قسم يحتوي على بنوده)
+    const sectionsData = [
+        { name: "القسم الأول: البيانات الأساسية للمصنع", items: [
+            { text: "هل اسم المصنع مطابق للترخيص؟", severity: "منخفض", weight:2 },
+            { text: "هل الترخيص ساري المفعول؟", severity: "عالي", weight:7 },
+            { text: "هل النشاط مطابق للترخيص؟", severity: "عالي", weight:7 },
+            { text: "هل توجد خريطة تدفق للإنتاج؟", severity: "منخفض", weight:2 },
+            { text: "هل توجد طاقة إنتاجية معتمدة؟", severity: "منخفض", weight:2 },
+            { text: "هل يوجد مسؤول ضبط الجودة مؤهل؟", severity: "حرج جداً", weight:10 },
+            { text: "هل توجد شهادات ISO / HACCP؟", severity: "حرج جداً", weight:10 },
+            { text: "هل توجد نتائج فحوصات حديثة؟", severity: "عالي", weight:7 },
+            { text: "هل يوجد مخطط هندسي معتمد؟", severity: "متوسط", weight:4 }
+        ] },
+        { name: "القسم الثاني: الموقع العام والمبنى الخارجي", items: [
+            { text: "هل المصنع بعيد عن مصادر التلوث؟", severity: "حرج جداً", weight:10 },
+            { text: "هل المنطقة المحيطة بالمصنع نظيفة؟", severity: "متوسط", weight:4 },
+            { text: "هل توجد تجمعات مياه راكدة؟", severity: "عالي", weight:7 },
+            { text: "هل توجد روائح أو أدخنة أو غبار؟", severity: "عالي", weight:7 },
+            { text: "هل تصميم المبنى يمنع التلوث التبادلي؟", severity: "حرج جداً", weight:10 },
+            { text: "هل توجد مسارات منفصلة للمواد الخام والمنتج النهائي؟", severity: "عالي", weight:7 },
+            { text: "هل الأرضيات غير ماصة وسهلة التنظيف؟", severity: "عالي", weight:7 },
+            { text: "هل الجدران ملساء وسهلة التنظيف؟", severity: "متوسط", weight:4 },
+            { text: "هل الأسقف خالية من التشققات والتكثف؟", severity: "عالي", weight:7 },
+            { text: "هل النوافذ محكمة ومحمية؟", severity: "متوسط", weight:4 },
+            { text: "هل الأبواب محكمة الإغلاق؟", severity: "متوسط", weight:4 },
+            { text: "هل الإضاءة كافية ومغطاة؟", severity: "منخفض", weight:2 },
+            { text: "هل التهوية مناسبة؟", severity: "متوسط", weight:4 },
+            { text: "هل توجد مصارف أرضية فعالة؟", severity: "عالي", weight:7 },
+            { text: "هل يتم منع رجوع المياه العادمة؟", severity: "حرج جداً", weight:10 }
+        ] },
+        { name: "القسم الثالث: مصدر المياه الخام", items: [
+            { text: "هل مصدر المياه معتمد رسمياً؟", severity: "حرج جداً", weight:10 },
+            { text: "هل توجد حماية لمصدر المياه؟", severity: "حرج جداً", weight:10 },
+            { text: "هل توجد منطقة حماية للبئر؟", severity: "عالي", weight:7 },
+            { text: "هل توجد نتائج فحوصات دورية؟", severity: "حرج جداً", weight:10 },
+            { text: "هل المياه خالية من E.coli؟", severity: "حرج جداً", weight:10 },
+            { text: "هل المياه خالية من القولونيات؟", severity: "حرج جداً", weight:10 },
+            { text: "هل المياه مطابقة للمعايير الكيميائية؟", severity: "حرج جداً", weight:10 },
+            { text: "هل المياه خالية من المعادن الثقيلة؟", severity: "حرج جداً", weight:10 },
+            { text: "هل يتم فحص النترات والنتريت؟", severity: "حرج جداً", weight:10 },
+            { text: "هل يتم فحص المبيدات؟", severity: "حرج جداً", weight:10 },
+            { text: "هل يتم فحص البرومات؟", severity: "حرج جداً", weight:10 },
+            { text: "هل توجد خطة مراقبة للمصدر؟", severity: "عالي", weight:7 },
+            { text: "هل توجد سجلات متابعة للمصدر؟", severity: "متوسط", weight:4 }
+        ] },
+        { name: "القسم الرابع: نظام معالجة المياه (فلاتر، كربون، RO، أوزون، UV، خزانات)", items: [
+            { text: "الفلاتر الرملية تعمل بكفاءة؟", severity: "عالي", weight:7 },
+            { text: "يتم الغسيل العكسي بانتظام للرمليه؟", severity: "عالي", weight:7 },
+            { text: "سجلات ضغط وتشغيل الفلاتر الرملية", severity: "متوسط", weight:4 },
+            { text: "الكربون النشط بحالة جيدة", severity: "عالي", weight:7 },
+            { text: "استبدال الكربون النشط دورياً", severity: "عالي", weight:7 },
+            { text: "سجلات متابعة الكربون النشط", severity: "متوسط", weight:4 },
+            { text: "فلاتر المايكرون سليمة", severity: "عالي", weight:7 },
+            { text: "استبدال فلاتر المايكرون دورياً", severity: "عالي", weight:7 },
+            { text: "نظام RO فعال", severity: "حرج جداً", weight:10 },
+            { text: "مراقبة الضغط لنظام RO", severity: "عالي", weight:7 },
+            { text: "مراقبة التدفق لنظام RO", severity: "عالي", weight:7 },
+            { text: "قياس TDS لنظام RO", severity: "عالي", weight:7 },
+            { text: "الأغشية بحالة جيدة (RO)", severity: "حرج جداً", weight:10 },
+            { text: "سجلات صيانة RO", severity: "عالي", weight:7 },
+            { text: "نظام الأوزون يعمل بكفاءة", severity: "حرج جداً", weight:10 },
+            { text: "قياس تركيز الأوزون", severity: "عالي", weight:7 },
+            { text: "زمن التلامس كافٍ للأوزون", severity: "عالي", weight:7 },
+            { text: "نظام UV يعمل بكفاءة", severity: "حرج جداً", weight:10 },
+            { text: "مصابيح UV بحالة جيدة", severity: "عالي", weight:7 },
+            { text: "صيانة نظام UV", severity: "عالي", weight:7 },
+            { text: "الخزانات مغلقة بإحكام", severity: "حرج جداً", weight:10 },
+            { text: "الخزانات من مواد درجة غذائية", severity: "عالي", weight:7 },
+            { text: "تنظيف الخزانات دورياً", severity: "عالي", weight:7 },
+            { text: "الخزانات خالية من الصدأ أو التآكل", severity: "حرج جداً", weight:10 }
+        ] },
+        { name: "القسم الخامس: التعبئة والإنتاج", items: [
+            { text: "التعبئة في نظام مغلق", severity: "حرج جداً", weight:10 },
+            { text: "غرفة تعبئة معزولة", severity: "عالي", weight:7 },
+            { text: "وجود ضغط إيجابي", severity: "عالي", weight:7 },
+            { text: "فلاتر HEPA موجودة", severity: "عالي", weight:7 },
+            { text: "العبوات صالحة غذائياً", severity: "حرج جداً", weight:10 },
+            { text: "العبوات مخزنة بطريقة سليمة", severity: "عالي", weight:7 },
+            { text: "الأغطية معقمة", severity: "حرج جداً", weight:10 },
+            { text: "منع التلامس اليدوي المباشر", severity: "حرج جداً", weight:10 },
+            { text: "خطوط الإنتاج نظيفة", severity: "عالي", weight:7 },
+            { text: "السيور سليمة", severity: "متوسط", weight:4 },
+            { text: "مواد التعبئة مطابقة", severity: "حرج جداً", weight:10 },
+            { text: "مراقبة الإغلاق المحكم", severity: "عالي", weight:7 }
+        ] },
+        { name: "القسم السادس: النظافة والتطهير", items: [
+            { text: "برنامج تنظيف مكتوب", severity: "عالي", weight:7 },
+            { text: "إجراءات SOP للتنظيف", severity: "متوسط", weight:4 },
+            { text: "مواد التنظيف معتمدة", severity: "عالي", weight:7 },
+            { text: "المواد الكيميائية مخزنة جيداً", severity: "عالي", weight:7 },
+            { text: "سجلات تنظيف", severity: "عالي", weight:7 },
+            { text: "التحقق من فعالية التنظيف", severity: "حرج جداً", weight:10 },
+            { text: "المعدات نظيفة أثناء التشغيل", severity: "حرج جداً", weight:10 },
+            { text: "خطوط التعبئة نظيفة", severity: "حرج جداً", weight:10 }
+        ] },
+        { name: "القسم السابع: مكافحة الآفات", items: [
+            { text: "برنامج مكافحة آفات", severity: "عالي", weight:7 },
+            { text: "خرائط للمصائد", severity: "متوسط", weight:4 },
+            { text: "لا توجد آثار حشرات", severity: "حرج جداً", weight:10 },
+            { text: "لا توجد آثار قوارض", severity: "حرج جداً", weight:10 },
+            { text: "المصائد موزعة بشكل صحيح", severity: "متوسط", weight:4 },
+            { text: "سجلات متابعة مكافحة الآفات", severity: "متوسط", weight:4 },
+            { text: "الأبواب والنوافذ مانعة للحشرات", severity: "عالي", weight:7 }
+        ] },
+        { name: "القسم الثامن: النظافة الشخصية والعاملين", items: [
+            { text: "العاملون حاصلون على فحص طبي", severity: "حرج جداً", weight:10 },
+            { text: "يلتزمون بالزي الصحي", severity: "عالي", weight:7 },
+            { text: "غسل الأيدي بطريقة صحيحة", severity: "حرج جداً", weight:10 },
+            { text: "مغاسل كافية", severity: "عالي", weight:7 },
+            { text: "مواد تعقيم متوفرة", severity: "عالي", weight:7 },
+            { text: "منع ارتداء المجوهرات", severity: "متوسط", weight:4 },
+            { text: "تدريب العاملين", severity: "عالي", weight:7 },
+            { text: "غرف تبديل ملابس", severity: "متوسط", weight:4 },
+            { text: "منع الأكل والتدخين", severity: "عالي", weight:7 }
+        ] },
+        { name: "القسم التاسع: المختبر وضبط الجودة", items: [
+            { text: "مختبر داخلي", severity: "عالي", weight:7 },
+            { text: "فحوصات ميكروبية", severity: "حرج جداً", weight:10 },
+            { text: "فحوصات كيميائية", severity: "حرج جداً", weight:10 },
+            { text: "قياس pH", severity: "عالي", weight:7 },
+            { text: "قياس TDS", severity: "عالي", weight:7 },
+            { text: "قياس العكارة", severity: "عالي", weight:7 },
+            { text: "قياس الموصلية", severity: "متوسط", weight:4 },
+            { text: "أجهزة معايرة وشهادة معايرة", severity: "عالي", weight:7 },
+            { text: "حفظ عينات مرجعية", severity: "متوسط", weight:4 },
+            { text: "التحقق من النتائج", severity: "عالي", weight:7 }
+        ] },
+        { name: "القسم العاشر: المواصفات الكيميائية والميكروبية (المنتج النهائي)", items: [
+            { text: "المنتج خالٍ من E.coli", severity: "حرج جداً", weight:10 },
+            { text: "المنتج خالٍ من القولونيات", severity: "حرج جداً", weight:10 },
+            { text: "المنتج خالٍ من Pseudomonas", severity: "حرج جداً", weight:10 },
+            { text: "العد الكلي ضمن الحدود", severity: "عالي", weight:7 },
+            { text: "الرصاص ضمن الحدود", severity: "حرج جداً", weight:10 },
+            { text: "الزرنيخ ضمن الحدود", severity: "حرج جداً", weight:10 },
+            { text: "الكادميوم ضمن الحدود", severity: "حرج جداً", weight:10 },
+            { text: "الزئبق ضمن الحدود", severity: "حرج جداً", weight:10 },
+            { text: "النترات ضمن الحدود", severity: "حرج جداً", weight:10 },
+            { text: "البرومات ضمن الحدود", severity: "حرج جداً", weight:10 },
+            { text: "الفلوريد ضمن الحدود", severity: "متوسط", weight:4 },
+            { text: "الصوديوم ضمن الحدود", severity: "متوسط", weight:4 }
+        ] },
+        { name: "القسم الحادي عشر: نظام HACCP", items: [
+            { text: "فريق HACCP", severity: "عالي", weight:7 },
+            { text: "تحليل مخاطر", severity: "حرج جداً", weight:10 },
+            { text: "تحديد CCPs", severity: "حرج جداً", weight:10 },
+            { text: "حدود حرجة", severity: "حرج جداً", weight:10 },
+            { text: "مراقبة CCPs", severity: "حرج جداً", weight:10 },
+            { text: "إجراءات تصحيحية", severity: "حرج جداً", weight:10 },
+            { text: "التحقق Validation", severity: "عالي", weight:7 },
+            { text: "مراجعة النظام", severity: "متوسط", weight:4 },
+            { text: "سجلات HACCP", severity: "عالي", weight:7 }
+        ] },
+        { name: "القسم الثاني عشر: التخزين والنقل", items: [
+            { text: "التخزين بعيد عن أشعة الشمس", severity: "عالي", weight:7 },
+            { text: "درجات الحرارة مناسبة", severity: "عالي", weight:7 },
+            { text: "المستودعات نظيفة", severity: "عالي", weight:7 },
+            { text: "المنتج محمي من الحرارة", severity: "حرج جداً", weight:10 },
+            { text: "وسائل النقل نظيفة", severity: "عالي", weight:7 },
+            { text: "يطبق FIFO/FEFO", severity: "متوسط", weight:4 },
+            { text: "سجلات نقل", severity: "متوسط", weight:4 }
+        ] },
+        { name: "القسم الثالث عشر: التتبع وسحب المنتج", items: [
+            { text: "نظام تتبع المنتج", severity: "حرج جداً", weight:10 },
+            { text: "أكواد التشغيل واضحة", severity: "عالي", weight:7 },
+            { text: "خطة سحب المنتج", severity: "حرج جداً", weight:10 },
+            { text: "تنفيذ سحب وهمي", severity: "عالي", weight:7 },
+            { text: "سرعة الاستجابة فعالة", severity: "عالي", weight:7 },
+            { text: "سجلات للسحب", severity: "متوسط", weight:4 }
+        ] },
+        { name: "القسم الرابع عشر: الوثائق والسجلات", items: [
+            { text: "سجلات الإنتاج محدثة", severity: "متوسط", weight:4 },
+            { text: "سجلات الصيانة متوفرة", severity: "متوسط", weight:4 },
+            { text: "سجلات المعايرة متوفرة", severity: "متوسط", weight:4 },
+            { text: "سجلات التدريب متوفرة", severity: "منخفض", weight:2 },
+            { text: "سجلات الشكاوى متوفرة", severity: "متوسط", weight:4 },
+            { text: "سجلات الفحوصات مكتملة", severity: "عالي", weight:7 },
+            { text: "الوثائق معتمدة ومحدثة", severity: "متوسط", weight:4 }
+        ] }
+    ];
+
+    let allItems = []; // لتخزين المراجع
+
+    function buildForms() {
+        const container = document.getElementById('sectionsContainer');
+        container.innerHTML = '';
+        let globalIndex = 0;
+        sectionsData.forEach((section, secIdx) => {
+            const card = document.createElement('div');
+            card.className = 'section-card';
+            const header = document.createElement('div');
+            header.className = 'section-header';
+            header.innerHTML = `<span>📌 ${section.name}</span><span class="toggle-icon">▼</span>`;
+            const content = document.createElement('div');
+            content.className = 'section-content';
+            const table = document.createElement('table');
+            table.className = 'items-table';
+            table.innerHTML = `<thead><tr><th>السؤال</th><th>مستوى الخطورة</th><th>التقييم</th><th>الدرجة المحققة</th><th>ملاحظات</th></tr></thead><tbody></tbody>`;
+            const tbody = table.querySelector('tbody');
+            section.items.forEach(item => {
+                const tr = document.createElement('tr');
+                const weightVal = severityWeight[item.severity];
+                const maxPoint = weightVal;
+                const optionSelect = document.createElement('select');
+                optionSelect.innerHTML = `<option value="0">غير مستوفي (0%)</option><option value="50">مستوفي جزئياً (50%)</option><option value="100">مستوفي (100%)</option><option value="-1">لا ينطبق (يستبعد)</option>`;
+                optionSelect.dataset.index = globalIndex;
+                const scoreSpan = document.createElement('span');
+                scoreSpan.className = 'score-cell';
+                scoreSpan.id = `score_${globalIndex}`;
+                scoreSpan.innerText = '0';
+                const earnedFunc = () => {
+                    const val = optionSelect.value;
+                    if (val === "-1") return null; // يستبعد
+                    const percent = parseInt(val);
+                    return (percent / 100) * maxPoint;
+                };
+                const updateDisplay = () => {
+                    const earned = earnedFunc();
+                    const displayVal = (earned === null) ? "يستبعد" : earned.toFixed(1);
+                    scoreSpan.innerText = (earned === null) ? "─" : earned;
+                    if(earned !== null) scoreSpan.style.background = "#e0f2e0";
+                    else scoreSpan.style.background = "#efebe9";
+                };
+                optionSelect.addEventListener('change', updateDisplay);
+                updateDisplay();
+                const tdSelect = document.createElement('td');
+                tdSelect.appendChild(optionSelect);
+                tr.innerHTML = `<td>${item.text}</td><td><span class="severity-badge ${item.severity === 'حرج جداً' ? 'crit-veryhigh' : (item.severity === 'عالي' ? 'crit-high' : (item.severity === 'متوسط' ? 'crit-medium' : 'crit-low'))}">${item.severity} (${maxPoint} نقاط)</span></td>`;
+                tr.appendChild(tdSelect);
+                const tdScore = document.createElement('td');
+                tdScore.appendChild(scoreSpan);
+                tr.appendChild(tdScore);
+                const tdNotes = document.createElement('td');
+                const noteInput = document.createElement('input');
+                noteInput.placeholder = "ملاحظات";
+                noteInput.style.width = "90%";
+                tdNotes.appendChild(noteInput);
+                tr.appendChild(tdNotes);
+                tbody.appendChild(tr);
+                allItems.push({ item, select: optionSelect, maxPoint, scoreSpan, severity: item.severity, weight: maxPoint });
+                globalIndex++;
+            });
+            content.appendChild(table);
+            card.appendChild(header);
+            card.appendChild(content);
+            container.appendChild(card);
+            header.addEventListener('click', () => {
+                content.classList.toggle('open');
+                header.querySelector('.toggle-icon').innerText = content.classList.contains('open') ? '▲' : '▼';
+            });
+            // افتح أول قسمين بشكل افتراضي (اختياري)
+            if(secIdx < 2) content.classList.add('open');
+        });
+    }
+
+    function calculateTotal() {
+        let totalWeightedPossible = 0;
+        let totalWeightedEarned = 0;
+        let criticalViolations = 0;
+        for (let it of allItems) {
+            const val = it.select.value;
+            if (val === "-1") continue; // لا ينطبق مستبعد
+            const percent = parseInt(val);
+            const earnedPoints = (percent / 100) * it.maxPoint;
+            totalWeightedPossible += it.maxPoint;
+            totalWeightedEarned += earnedPoints;
+            // المخالفات الحرجة: إذا كان البند حرج جداً أو عالي ودرجة أقل من 50%؟ المعيار: بنود حرجة جداً (أو حادة) اذا كانت غير مستوفي 0% او جزئي اقل من 50 نعتبر مخالفة حرجة وفق الدليل
+            if ((it.severity === "حرج جداً" || it.severity === "عالي") && percent < 50) {
+                criticalViolations++;
+            }
+            // أيضاً البنود المذكورة في البنود الحرجة المؤدية للإيقاف نضيف منطق اضافي (لكن نكتفي بالمخالفات الشديدة)
+        }
+        let percentFinal = totalWeightedPossible === 0 ? 0 : (totalWeightedEarned / totalWeightedPossible) * 100;
+        percentFinal = Math.round(percentFinal * 10) / 10;
+        let rank = "", decision = "";
+        if (percentFinal >= 95) { rank = "A+"; decision = "اعتماد كامل"; }
+        else if (percentFinal >= 90) { rank = "A"; decision = "مؤهل"; }
+        else if (percentFinal >= 80) { rank = "B"; decision = "خطة تحسين"; }
+        else if (percentFinal >= 70) { rank = "C"; decision = "إعادة تقييم"; }
+        else { rank = "D"; decision = "إيقاف أو تعليق"; }
+        document.getElementById('totalWeightedPossible').innerText = totalWeightedPossible.toFixed(1);
+        document.getElementById('totalWeightedEarned').innerText = totalWeightedEarned.toFixed(1);
+        document.getElementById('finalPercent').innerText = percentFinal + "%";
+        document.getElementById('finalRank').innerText = rank;
+        document.getElementById('criticalCount').innerText = criticalViolations;
+        document.getElementById('inspectorDecision').innerText = decision;
+        if(criticalViolations > 5) document.getElementById('inspectorDecision').innerText = "إيقاف فوري - مخالفات حرجة متعددة";
+    }
+
+    function resetAll() {
+        for(let it of allItems) {
+            it.select.value = "0";
+            it.select.dispatchEvent(new Event('change'));
+        }
+        calculateTotal();
+    }
+
+    window.onload = () => {
+        buildForms();
+        calculateTotal();
+        document.getElementById('calcBtn').addEventListener('click', calculateTotal);
+        document.getElementById('resetBtn').addEventListener('click', resetAll);
+    };
+</script>
+</body>
+</html>
