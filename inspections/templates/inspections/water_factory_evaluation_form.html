@@ -6,19 +6,23 @@
     <title>استمارة تقييم وتصنيف مصانع مياه الشرب المعبأة - النظام الإلكتروني</title>
     <style>
         :root {
-            --page-bg: #f4f7f5;
+            --page-bg: #eef4f2;
             --surface: #ffffff;
-            --surface-soft: #f7faf8;
-            --line: #d8e3da;
-            --brand: #1f7a4f;
-            --brand-strong: #145f3c;
-            --brand-soft: #e8f4ee;
-            --text: #1d2a22;
-            --muted: #5c7064;
+            --surface-soft: #f8fbfa;
+            --line: #dbe7e2;
+            --line-strong: #c3d7ce;
+            --brand: #238667;
+            --brand-strong: #166047;
+            --brand-soft: #e8f7f2;
+            --accent-soft: #e7f3fb;
+            --text: #172722;
+            --muted: #64756e;
             --danger: #b42318;
             --warning: #b45309;
-            --info: #1d4ed8;
-            --shadow: 0 10px 30px rgba(23, 45, 33, 0.08);
+            --info: #0f6ea8;
+            --radius: 8px;
+            --shadow: 0 8px 24px rgba(22, 54, 44, 0.07);
+            --shadow-md: 0 14px 34px rgba(22, 54, 44, 0.12);
         }
 
         * {
@@ -29,7 +33,9 @@
 
         body {
             font-family: 'Segoe UI', 'Tahoma', 'Arial', sans-serif;
-            background: var(--page-bg);
+            background:
+                radial-gradient(circle at top right, rgba(86, 184, 154, .14), transparent 32rem),
+                linear-gradient(180deg, #f7fbfa 0%, var(--page-bg) 45%, #edf3f1 100%);
             color: var(--text);
             padding: clamp(10px, 2vw, 24px);
             line-height: 1.5;
@@ -41,7 +47,7 @@
             margin: auto;
             background: var(--surface);
             border: 1px solid var(--line);
-            border-radius: 18px;
+            border-radius: var(--radius);
             box-shadow: var(--shadow);
             overflow: hidden;
             padding: clamp(14px, 2vw, 28px);
@@ -61,7 +67,7 @@
             align-items: center;
             gap: 6px;
             padding: 8px 14px;
-            border: 1px solid var(--line);
+            border: 1px solid var(--line-strong);
             border-radius: 999px;
             background: var(--surface);
             color: var(--brand-strong);
@@ -79,7 +85,7 @@
         h1 {
             font-size: clamp(1.35rem, 2.5vw, 2rem);
             color: var(--brand-strong);
-            border-right: 6px solid var(--brand);
+            border-right: 5px solid var(--brand);
             padding-right: 14px;
             margin-bottom: 10px;
             line-height: 1.35;
@@ -101,7 +107,7 @@
             background: var(--surface-soft);
             border: 1px solid var(--line);
             padding: 12px;
-            border-radius: 12px;
+            border-radius: var(--radius);
             font-size: 0.85rem;
             margin-bottom: 18px;
             display: flex;
@@ -120,7 +126,7 @@
         .facility-panel {
             background: var(--surface-soft);
             border: 1px solid var(--line);
-            border-radius: 14px;
+            border-radius: var(--radius);
             padding: 16px;
             margin-bottom: 18px;
         }
@@ -157,7 +163,7 @@
             justify-content: center;
             min-height: 40px;
             padding: 9px 14px;
-            border-radius: 10px;
+            border-radius: var(--radius);
             background: var(--brand);
             color: white;
             text-decoration: none;
@@ -192,8 +198,8 @@
 
         .facility-detail {
             background: var(--surface);
-            border: 1px solid #e4ece6;
-            border-radius: 10px;
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
             padding: 10px;
             min-height: 70px;
         }
@@ -217,7 +223,7 @@
             background: #fff7ed;
             border: 1px solid #fed7aa;
             color: #9a3412;
-            border-radius: 10px;
+            border-radius: var(--radius);
             padding: 12px;
             margin-top: 10px;
             font-size: 0.9rem;
@@ -231,7 +237,7 @@
             width: 100%;
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
-            border-radius: 12px;
+            border-radius: var(--radius);
         }
 
         .rating-table, .points-table {
@@ -239,8 +245,8 @@
             border-collapse: collapse;
             margin: 0 0 20px;
             font-size: 0.9rem;
-            background: #fffdf5;
-            border-radius: 12px;
+            background: var(--surface);
+            border-radius: var(--radius);
             overflow: hidden;
             min-width: 620px;
         }
@@ -252,21 +258,22 @@
         }
 
         .rating-table th, .points-table th {
-            background: var(--brand-soft);
+            background: #eef6f3;
             color: var(--brand-strong);
+            font-weight: 800;
         }
 
         .section-card {
             background: var(--surface);
             margin-top: 14px;
-            border-radius: 12px;
-            box-shadow: 0 4px 16px rgba(31, 122, 79, 0.06);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
             overflow: hidden;
             border: 1px solid var(--line);
         }
 
         .section-header {
-            background: var(--brand-soft);
+            background: #eef6f3;
             color: var(--brand-strong);
             padding: 14px 16px;
             cursor: pointer;
@@ -286,7 +293,7 @@
         }
 
         .section-header:hover {
-            background: #dbeee5;
+            background: var(--brand-soft);
         }
 
         .section-header .toggle-icon {
@@ -298,7 +305,7 @@
         .section-content {
             display: none;
             padding: 14px;
-            background: #fffefa;
+            background: var(--surface);
             border-top: 1px solid var(--line);
             overflow-x: auto;
         }
@@ -321,13 +328,13 @@
         }
 
         .items-table th {
-            background: var(--surface-soft);
-            font-weight: 600;
+            background: #eef6f3;
+            font-weight: 800;
             color: var(--brand-strong);
         }
 
         select, input, textarea {
-            border: 1px solid #b9cbbf;
+            border: 1px solid var(--line-strong);
             background: var(--surface);
             font-family: inherit;
             font-size: 0.85rem;
@@ -337,7 +344,7 @@
             width: 100%;
             min-width: 150px;
             padding: 8px 10px;
-            border-radius: 10px;
+            border-radius: var(--radius);
             text-align: right;
         }
 
@@ -345,7 +352,7 @@
             width: 100%;
             min-height: 42px;
             resize: vertical;
-            border-radius: 10px;
+            border-radius: var(--radius);
             padding: 8px 10px;
             line-height: 1.5;
         }
@@ -380,7 +387,7 @@
         .summary-box {
             background: var(--brand-soft);
             border: 1px solid var(--line);
-            border-radius: 14px;
+            border-radius: var(--radius);
             padding: 14px;
             margin: 24px 0 14px;
             display: grid;
@@ -390,8 +397,8 @@
 
         .summary-item {
             background: var(--surface);
-            border: 1px solid #e4ece6;
-            border-radius: 10px;
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
             padding: 12px;
             min-width: 0;
             text-align: center;
@@ -420,7 +427,7 @@
             flex-wrap: wrap;
             background: rgba(255, 255, 255, 0.94);
             border: 1px solid var(--line);
-            border-radius: 12px;
+            border-radius: var(--radius);
             padding: 10px;
             backdrop-filter: blur(8px);
         }
@@ -430,7 +437,7 @@
             border: none;
             color: white;
             padding: 11px 18px;
-            border-radius: 10px;
+            border-radius: var(--radius);
             font-size: 1rem;
             cursor: pointer;
             transition: 0.2s;
@@ -449,7 +456,7 @@
             font-size: 1.2rem;
             font-weight: bold;
             padding: 12px;
-            border-radius: 28px;
+            border-radius: 999px;
             text-align: center;
         }
 

@@ -6,6 +6,12 @@
 
 {% block content %}
 
+<nav class="water-context-nav" aria-label="روابط تصنيف مصانع مياه الشرب">
+  <a href="/">💧 الرئيسية</a>
+  <a href="{% url 'water_factory_classification' %}">🏭 لوحة التحكم</a>
+  <a href="{% url 'water_factory_classification' %}">📄 تقارير التصنيف</a>
+</nav>
+
 <section class="water-service-hero mb-4">
   <div>
     <h1>لوحة تحكم تصنيف مصانع مياه الشرب المعبأة</h1>
