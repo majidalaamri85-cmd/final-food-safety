@@ -419,10 +419,16 @@ def water_factory_evaluation_form(request):
 
 
 def user_login(request):
-    if request.user.is_authenticated:
-        return redirect('dashboard')
-
     next_url = (request.GET.get('next') or request.POST.get('next') or '').strip()
+
+    if request.user.is_authenticated:
+        if next_url and url_has_allowed_host_and_scheme(
+            url=next_url,
+            allowed_hosts={request.get_host()},
+            require_https=request.is_secure(),
+        ):
+            return redirect(next_url)
+        return redirect('dashboard')
 
     if request.method == 'POST':
         username = request.POST.get('username', '').strip()
