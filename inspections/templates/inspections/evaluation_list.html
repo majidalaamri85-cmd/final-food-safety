@@ -3,10 +3,12 @@
 {% block breadcrumb %}<li class="breadcrumb-item active" aria-current="page">التقارير</li>{% endblock %}
 {% block content %}
 
+{% include 'inspections/_evaluation_dashboard.html' %}
+
 <div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-2">
   <div>
-    <h1><i class="fa-solid fa-clipboard-list text-success me-2"></i>تقارير التقييم</h1>
-    <div class="sub">فلترة التقارير بحسب المحافظة والولاية ودرجة التصنيف</div>
+    <h1><i class="fa-solid fa-clipboard-list text-success me-2"></i>تقييم المنشآت الغذائية</h1>
+    <div class="sub">تقييم جديد والتقارير الخاصة بالتقييم مع فلترة النتائج بحسب المحافظة والولاية ودرجة التصنيف.</div>
   </div>
   <div class="d-flex gap-2 flex-wrap">
     {% if request.user.is_superuser %}
@@ -18,7 +20,7 @@
       <i class="fa-solid fa-file-excel me-1"></i>تصدير إكسل
     </a>
     <a class="btn btn-success" href="/evaluations/new/">
-      <i class="fa-solid fa-plus me-1"></i>إضافة تقييم
+      <i class="fa-solid fa-plus me-1"></i>تقييم جديد
     </a>
   </div>
 </div>

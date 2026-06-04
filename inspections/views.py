@@ -447,13 +447,24 @@ def water_factory_classification(request):
         row['grade']: row['total']
         for row in water_qs.values('grade').annotate(total=Count('id'))
     }
+    total_water_classifications = water_qs.count()
+    grade_chart_items = [
+        {
+            'grade': item['grade'],
+            'label': item['range'],
+            'count': grade_counts.get(item['grade'], 0),
+            'pct': round((grade_counts.get(item['grade'], 0) / total_water_classifications) * 100, 1) if total_water_classifications else 0,
+        }
+        for item in classification_levels
+    ]
     context.update({
-        'total_water_classifications': water_qs.count(),
+        'total_water_classifications': total_water_classifications,
         'classified_factories_count': water_qs.values('establishment_id').distinct().count(),
         'available_factories_count': allowed_establishments.filter(status='active').count(),
         'avg_water_percentage': water_qs.aggregate(avg=Avg('percentage'))['avg'] or 0,
         'latest_water_classifications': water_qs.order_by('-classified_at', '-created_at')[:10],
         'grade_counts': grade_counts,
+        'grade_chart_items': grade_chart_items,
     })
     return render(request, 'inspections/water_factory_classification.html', context)
 
@@ -852,6 +863,7 @@ def _build_establishment_list_context(request):
             'license_no',
             'direct_location_url',
             'status',
+            'created_at',
             'governorate__name_ar',
             'wilayat__name_ar',
         )
@@ -882,6 +894,32 @@ def _build_establishment_list_context(request):
     if activity:
         qs = qs.filter(activity_type=activity)
     reference_data = _get_reference_data()
+    total_establishments = qs.count()
+    status_counts = {
+        row['status']: row['total']
+        for row in qs.values('status').annotate(total=Count('id'))
+    }
+    establishment_status_chart = [
+        {
+            'label': label,
+            'count': status_counts.get(value, 0),
+            'pct': round((status_counts.get(value, 0) / total_establishments) * 100, 1) if total_establishments else 0,
+            'color': {
+                'active': 'success',
+                'suspended': 'warning',
+                'closed': 'danger',
+            }.get(value, 'secondary'),
+        }
+        for value, label in Establishment.STATUS_CHOICES
+    ]
+    establishment_governorate_chart = [
+        {
+            'label': row['governorate__name_ar'] or '-',
+            'count': row['total'],
+            'pct': round((row['total'] / total_establishments) * 100, 1) if total_establishments else 0,
+        }
+        for row in qs.values('governorate__name_ar').annotate(total=Count('id')).order_by('-total')[:6]
+    ]
 
     paginator = Paginator(qs, PAGE_SIZE)
     page_obj = paginator.get_page(request.GET.get('page'))
@@ -899,6 +937,13 @@ def _build_establishment_list_context(request):
         'selected_wilayat': wilayat_id,
         'selected_activity': activity,
         'list_querystring': query_params.urlencode(),
+        'total_establishments': total_establishments,
+        'active_establishments_count': status_counts.get('active', 0),
+        'suspended_establishments_count': status_counts.get('suspended', 0),
+        'closed_establishments_count': status_counts.get('closed', 0),
+        'establishment_activity_count': qs.exclude(activity_type='').values('activity_type').distinct().count(),
+        'establishment_status_chart': establishment_status_chart,
+        'establishment_governorate_chart': establishment_governorate_chart,
     }
 
 
@@ -1081,6 +1126,39 @@ def evaluation_list(request):
             filters |= Q(establishment__establishment_no=int(normalized_q))
         qs = qs.filter(filters)
 
+    total_evaluations = qs.count()
+    approval_counts = {
+        row['approval_status']: row['total']
+        for row in qs.values('approval_status').annotate(total=Count('id'))
+    }
+    classification_counts = {
+        row['classification']: row['total']
+        for row in qs.values('classification').annotate(total=Count('id'))
+    }
+    classification_labels = dict(Evaluation.CLASSIFICATION_CHOICES)
+    evaluation_classification_chart = [
+        {
+            'label': classification_labels.get(value, value),
+            'count': classification_counts.get(value, 0),
+            'pct': round((classification_counts.get(value, 0) / total_evaluations) * 100, 1) if total_evaluations else 0,
+            'color': {
+                'excellent': 'success',
+                'good': 'primary',
+                'acceptable': 'warning',
+                'weak': 'danger',
+            }.get(value, 'secondary'),
+        }
+        for value, _ in Evaluation.CLASSIFICATION_CHOICES
+    ]
+    evaluation_governorate_chart = [
+        {
+            'label': row['establishment__governorate__name_ar'] or '-',
+            'count': row['total'],
+            'pct': round((row['total'] / total_evaluations) * 100, 1) if total_evaluations else 0,
+        }
+        for row in qs.values('establishment__governorate__name_ar').annotate(total=Count('id')).order_by('-total')[:6]
+    ]
+
     reference_data = _get_reference_data()
     classification_choices = Evaluation.CLASSIFICATION_CHOICES
 
@@ -1109,6 +1187,13 @@ def evaluation_list(request):
         'selected_classification': classification,
         'selected_activity': activity,
         'q': q,
+        'total_evaluations': total_evaluations,
+        'completed_evaluations_count': approval_counts.get('completed', 0),
+        'draft_evaluations_count': approval_counts.get('draft', 0),
+        'avg_evaluation_percentage': qs.aggregate(avg=Avg('percentage'))['avg'] or 0,
+        'evaluated_establishments_count': qs.values('establishment_id').distinct().count(),
+        'evaluation_classification_chart': evaluation_classification_chart,
+        'evaluation_governorate_chart': evaluation_governorate_chart,
     })
 
 

@@ -1,0 +1,74 @@
+{% load inspection_extras %}
+<section class="mb-4">
+  <div class="row g-3 mb-3">
+    <div class="col-6 col-lg-3">
+      <div class="kpi-card kpi-blue h-100">
+        <div class="kpi-icon"><i class="fa-solid fa-building"></i></div>
+        <div class="kpi-value">{{ total_establishments|arabic_digits }}</div>
+        <div class="kpi-label">إجمالي المنشآت</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="kpi-card kpi-green h-100">
+        <div class="kpi-icon"><i class="fa-solid fa-circle-check"></i></div>
+        <div class="kpi-value">{{ active_establishments_count|arabic_digits }}</div>
+        <div class="kpi-label">منشآت نشطة</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="kpi-card kpi-orange h-100">
+        <div class="kpi-icon"><i class="fa-solid fa-pause-circle"></i></div>
+        <div class="kpi-value">{{ suspended_establishments_count|arabic_digits }}</div>
+        <div class="kpi-label">منشآت موقوفة</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="kpi-card kpi-teal h-100">
+        <div class="kpi-icon"><i class="fa-solid fa-layer-group"></i></div>
+        <div class="kpi-value">{{ establishment_activity_count|arabic_digits }}</div>
+        <div class="kpi-label">أنشطة مسجلة</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-12 col-lg-5">
+      <div class="metric-panel">
+        <div class="metric-panel-header">
+          <h2>حالة المنشآت</h2>
+        </div>
+        <div class="metric-panel-body">
+          {% for item in establishment_status_chart %}
+            <div class="metric-bar-row">
+              <span class="metric-bar-label">{{ item.label }}</span>
+              <div class="metric-bar-track">
+                <div class="metric-bar-fill {{ item.color }}" style="width: {{ item.pct }}%;"></div>
+              </div>
+              <span class="metric-bar-count">{{ item.count|arabic_digits }}</span>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-lg-7">
+      <div class="metric-panel">
+        <div class="metric-panel-header">
+          <h2>توزيع المنشآت حسب المحافظة</h2>
+        </div>
+        <div class="metric-panel-body">
+          {% for item in establishment_governorate_chart %}
+            <div class="metric-bar-row">
+              <span class="metric-bar-label">{{ item.label }}</span>
+              <div class="metric-bar-track">
+                <div class="metric-bar-fill" style="width: {{ item.pct }}%;"></div>
+              </div>
+              <span class="metric-bar-count">{{ item.count|arabic_digits }}</span>
+            </div>
+          {% empty %}
+            <div class="metric-bar-empty">لا توجد بيانات كافية للعرض.</div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,19 @@
+{% load inspection_extras %}
+<div class="metric-panel mb-4">
+  <div class="metric-panel-header">
+    <h2>الإحصائيات الرسومية للتصنيف</h2>
+  </div>
+  <div class="metric-panel-body">
+    {% for item in grade_chart_items %}
+      <div class="metric-bar-row">
+        <span class="metric-bar-label">{{ item.grade }} - {{ item.label }}</span>
+        <div class="metric-bar-track">
+          <div class="metric-bar-fill success" style="width: {{ item.pct }}%;"></div>
+        </div>
+        <span class="metric-bar-count">{{ item.count|arabic_digits }}</span>
+      </div>
+    {% empty %}
+      <div class="metric-bar-empty">لا توجد بيانات كافية للعرض.</div>
+    {% endfor %}
+  </div>
+</div>
