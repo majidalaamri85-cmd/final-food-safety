@@ -41,7 +41,9 @@
         {% if not hide_establishments_nav %}
         <a class="nav-link nav-pill" href="/establishments/new/"><i class="fa-solid fa-building me-1"></i>المنشآت</a>
         {% endif %}
+        {% if not hide_evaluations_nav %}
         <a class="nav-link nav-pill" href="/evaluations/"><i class="fa-solid fa-clipboard-list me-1"></i>تقييم المنشآت الغذائية</a>
+        {% endif %}
         {% if show_reports_nav %}
         <a class="nav-link nav-pill" href="/evaluations/"><i class="fa-solid fa-file-lines me-1"></i>التقارير</a>
         {% endif %}

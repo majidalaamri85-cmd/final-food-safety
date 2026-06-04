@@ -465,6 +465,9 @@ def water_factory_classification(request):
         'latest_water_classifications': water_qs.order_by('-classified_at', '-created_at')[:10],
         'grade_counts': grade_counts,
         'grade_chart_items': grade_chart_items,
+        'hide_establishments_nav': True,
+        'hide_evaluations_nav': True,
+        'hide_nav_actions': True,
     })
     return render(request, 'inspections/water_factory_classification.html', context)
 
