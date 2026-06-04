@@ -840,8 +840,7 @@ def dashboard(request):
     return render(request, 'inspections/dashboard.html', context)
 
 
-@login_required
-def establishment_list(request):
+def _build_establishment_list_context(request):
     profile = _get_profile(request.user)
     qs = (
         Establishment.objects.select_related('governorate', 'wilayat')
@@ -886,8 +885,10 @@ def establishment_list(request):
 
     paginator = Paginator(qs, PAGE_SIZE)
     page_obj = paginator.get_page(request.GET.get('page'))
+    query_params = request.GET.copy()
+    query_params.pop('page', None)
 
-    return render(request, 'inspections/establishment_list.html', {
+    return {
         'establishments': page_obj,
         'page_obj': page_obj,
         'q': q,
@@ -897,7 +898,17 @@ def establishment_list(request):
         'selected_governorate': governorate_id,
         'selected_wilayat': wilayat_id,
         'selected_activity': activity,
-    })
+        'list_querystring': query_params.urlencode(),
+    }
+
+
+@login_required
+def establishment_list(request):
+    return render(
+        request,
+        'inspections/establishment_list.html',
+        _build_establishment_list_context(request),
+    )
 
 
 @login_required
@@ -913,15 +924,17 @@ def establishment_create(request):
             require_https=request.is_secure(),
         ):
             return redirect(next_url)
-        return redirect('establishment_list')
+        return redirect('establishment_create')
     reference_data = _get_reference_data()
-    return render(request, 'inspections/establishment_form.html', {
+    context = _build_establishment_list_context(request)
+    context.update({
         'form': form,
         'title': 'إضافة منشأة',
         'wilayats': reference_data['wilayats'],
         'isic_activities': ISIC4_FOOD_ACTIVITIES,
         'next': next_url,
     })
+    return render(request, 'inspections/establishment_form.html', context)
 
 
 @login_required
