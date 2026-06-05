@@ -1,8 +1,8 @@
 <div class="card shadow-sm mt-4">
   <div class="card-header bg-primary text-white d-flex align-items-center justify-content-between flex-wrap gap-2">
-    <span><i class="fa-solid fa-list me-2"></i>قائمة المنشآت</span>
+    <span>قائمة المنشآت</span>
     <a href="{% url 'export_establishments_excel' %}{% if list_querystring %}?{{ list_querystring }}{% endif %}" class="btn btn-light btn-sm">
-      <i class="fa-solid fa-file-excel me-1"></i>تصدير
+      تصدير
     </a>
   </div>
   <div class="card-body p-0">
@@ -25,7 +25,7 @@
             <tr class="align-middle {% if e.status == 'active' %}table-success{% elif e.status == 'suspended' %}table-warning{% else %}table-danger{% endif %}">
               <td>{{ establishments.start_index|add:forloop.counter0 }}</td>
               <td><span class="badge bg-primary">{{ e.reference_no }}</span></td>
-              <td><i class="fa-solid fa-building text-success me-1"></i>{{ e.commercial_name }}</td>
+              <td>{{ e.commercial_name }}</td>
               <td>{{ e.governorate }}</td>
               <td>{{ e.wilayat }}</td>
               <td>{{ e.activity_type }}</td>
@@ -40,8 +40,7 @@
               </td>
               <td>
                 <a href="{% url 'establishment_detail' e.pk %}" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1">
-                  <i class="fa-solid fa-eye"></i>
-                  <span class="d-none d-md-inline">تفاصيل</span>
+                  تفاصيل
                 </a>
               </td>
             </tr>

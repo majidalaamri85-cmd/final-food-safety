@@ -6,7 +6,7 @@
     <div class="col-lg-4">
       <div class="card shadow border-0 mb-4">
         <div class="card-body">
-          <h4 class="card-title mb-3"><i class="fa-solid fa-building text-success me-2"></i>{{ establishment.commercial_name }}</h4>
+          <h4 class="card-title mb-3">{{ establishment.commercial_name }}</h4>
           <ul class="list-group list-group-flush mb-2">
             <li class="list-group-item"><strong>الرقم المرجعي:</strong> <span class="badge bg-primary">{{ establishment.reference_no }}</span></li>
             <li class="list-group-item"><strong>المحافظة:</strong> {{ establishment.governorate }}</li>
@@ -24,7 +24,7 @@
     </div>
     <div class="col-lg-8">
       <div class="card shadow border-0 mb-4">
-        <div class="card-header bg-info text-white"><i class="fa-solid fa-stairs"></i> مراحل تأهيل المنشأة</div>
+        <div class="card-header bg-info text-white">مراحل تأهيل المنشأة</div>
         <div class="card-body p-0">
           <div class="table-responsive mb-0">
             <table class="table table-bordered align-middle mb-0">
@@ -40,7 +40,7 @@
               <tbody>
                 {% for qual in establishment.qualification_followups.all %}
                 <tr class="align-middle">
-                  <td><i class="fa-solid fa-flag-checkered text-secondary me-1"></i> متابعة التأهيل</td>
+                  <td>متابعة التأهيل</td>
                   <td>
                     {% if qual.current_status == 'completed' %}<span class="badge bg-success">{{ qual.get_current_status_display }}</span>
                     {% elif qual.current_status == 'in_progress' %}<span class="badge bg-warning text-dark">{{ qual.get_current_status_display }}</span>
@@ -64,7 +64,7 @@
         </div>
       </div>
       <div class="card shadow border-0 mb-4">
-        <div class="card-header bg-primary text-white"><i class="fa-solid fa-bottle-water"></i> تقارير تصنيف مصانع مياه الشرب</div>
+        <div class="card-header bg-primary text-white">تقارير تصنيف مصانع مياه الشرب</div>
         <div class="card-body p-0">
           <div class="table-responsive mb-0">
             <table class="table table-bordered align-middle mb-0">
@@ -97,7 +97,7 @@
         </div>
       </div>
       <div class="card shadow border-0 mb-4">
-        <div class="card-header bg-success text-white"><i class="fa-solid fa-file-shield"></i> ملفات نظام سلامة الغذاء HACCP</div>
+        <div class="card-header bg-success text-white">ملفات نظام سلامة الغذاء HACCP</div>
         <div class="card-body">
           <form method="post" enctype="multipart/form-data" class="mb-4">
             {% csrf_token %}
@@ -106,7 +106,7 @@
               <div class="col-md-3">{{ form.title.label_tag }}{{ form.title }}</div>
               <div class="col-md-3">{{ form.file.label_tag }}{{ form.file }}</div>
               <div class="col-md-3">{{ form.notes.label_tag }}{{ form.notes }}</div>
-              <div class="col-md-12 mt-2"><button class="btn btn-success"><i class="fa-solid fa-upload me-1"></i>رفع الملف</button></div>
+              <div class="col-md-12 mt-2"><button class="btn btn-success">رفع الملف</button></div>
             </div>
           </form>
           <div class="table-responsive">
@@ -123,9 +123,9 @@
               <tbody>
                 {% for f in haccp_files %}
                 <tr>
-                  <td><i class="fa-solid fa-file-alt text-info me-1"></i> {{ f.get_file_type_display }}</td>
+                  <td>{{ f.get_file_type_display }}</td>
                   <td>{{ f.title }}</td>
-                  <td><a href="{{ f.file.url }}" target="_blank" class="btn btn-sm btn-outline-secondary"><i class="fa-solid fa-download"></i> تحميل</a></td>
+                  <td><a href="{{ f.file.url }}" target="_blank" class="btn btn-sm btn-outline-secondary">تحميل</a></td>
                   <td>{{ f.uploaded_at|date:"Y-m-d H:i" }}</td>
                   <td>{{ f.notes }}</td>
                 </tr>

@@ -15,11 +15,11 @@
   <div class="d-flex gap-2">
     {% if request.user.is_superuser %}
       <a class="btn btn-outline-success" href="{% url 'download_database_backup' %}">
-        <i class="fa-solid fa-download me-1"></i>تنزيل نسخة احتياطية
+        تنزيل نسخة احتياطية
       </a>
     {% endif %}
     <a class="btn btn-outline-secondary" href="{% url 'establishment_list' %}">
-      <i class="fa-solid fa-arrow-right me-1"></i>رجوع
+      رجوع
     </a>
   </div>
 </div>
@@ -118,38 +118,38 @@
         <div class="col-12"><h5 class="mb-1">6. المستندات</h5></div>
 
         <div class="col-md-6">
-          <label class="form-label fw-semibold"><i class="fa-solid fa-file-lines me-1 text-success"></i>{{ form.doc_commercial_register.label }}</label>
+          <label class="form-label fw-semibold">{{ form.doc_commercial_register.label }}</label>
           {{ form.doc_commercial_register }}
           <div id="commercial-register-file-ui" class="d-flex align-items-center gap-2 mt-2"></div>
           {% if form.doc_commercial_register.value %}
-            <div class="form-text"><i class="fa-solid fa-paperclip me-1"></i><a href="{{ form.doc_commercial_register.value.url }}" target="_blank">{{ form.doc_commercial_register.value.name|cut:'establishment_docs/' }}</a></div>
+            <div class="form-text"><a href="{{ form.doc_commercial_register.value.url }}" target="_blank">{{ form.doc_commercial_register.value.name|cut:'establishment_docs/' }}</a></div>
           {% endif %}
           {% if form.doc_commercial_register.errors %}<div class="text-danger small">{{ form.doc_commercial_register.errors }}</div>{% endif %}
         </div>
         <div class="col-md-6">
-          <label class="form-label fw-semibold"><i class="fa-solid fa-building-columns me-1 text-success"></i>{{ form.doc_municipal_license.label }}</label>
+          <label class="form-label fw-semibold">{{ form.doc_municipal_license.label }}</label>
           {{ form.doc_municipal_license }}
           <div id="municipal-license-file-ui" class="d-flex align-items-center gap-2 mt-2"></div>
           {% if form.doc_municipal_license.value %}
-            <div class="form-text"><i class="fa-solid fa-paperclip me-1"></i><a href="{{ form.doc_municipal_license.value.url }}" target="_blank">{{ form.doc_municipal_license.value.name|cut:'establishment_docs/' }}</a></div>
+            <div class="form-text"><a href="{{ form.doc_municipal_license.value.url }}" target="_blank">{{ form.doc_municipal_license.value.name|cut:'establishment_docs/' }}</a></div>
           {% endif %}
           {% if form.doc_municipal_license.errors %}<div class="text-danger small">{{ form.doc_municipal_license.errors }}</div>{% endif %}
         </div>
         <div class="col-md-6">
-          <label class="form-label fw-semibold"><i class="fa-solid fa-certificate me-1 text-success"></i>{{ form.doc_quality_certificates.label }}</label>
+          <label class="form-label fw-semibold">{{ form.doc_quality_certificates.label }}</label>
           {{ form.doc_quality_certificates }}
           <div id="quality-certificates-file-ui" class="d-flex align-items-center gap-2 mt-2"></div>
           {% if form.doc_quality_certificates.value %}
-            <div class="form-text"><i class="fa-solid fa-paperclip me-1"></i><a href="{{ form.doc_quality_certificates.value.url }}" target="_blank">{{ form.doc_quality_certificates.value.name|cut:'establishment_docs/' }}</a></div>
+            <div class="form-text"><a href="{{ form.doc_quality_certificates.value.url }}" target="_blank">{{ form.doc_quality_certificates.value.name|cut:'establishment_docs/' }}</a></div>
           {% endif %}
           {% if form.doc_quality_certificates.errors %}<div class="text-danger small">{{ form.doc_quality_certificates.errors }}</div>{% endif %}
         </div>
         <div class="col-md-6">
-          <label class="form-label fw-semibold"><i class="fa-solid fa-drafting-compass me-1 text-success"></i>{{ form.doc_factory_layout.label }}</label>
+          <label class="form-label fw-semibold">{{ form.doc_factory_layout.label }}</label>
           {{ form.doc_factory_layout }}
           <div id="factory-layout-file-ui" class="d-flex align-items-center gap-2 mt-2"></div>
           {% if form.doc_factory_layout.value %}
-            <div class="form-text"><i class="fa-solid fa-paperclip me-1"></i><a href="{{ form.doc_factory_layout.value.url }}" target="_blank">{{ form.doc_factory_layout.value.name|cut:'establishment_docs/' }}</a></div>
+            <div class="form-text"><a href="{{ form.doc_factory_layout.value.url }}" target="_blank">{{ form.doc_factory_layout.value.name|cut:'establishment_docs/' }}</a></div>
           {% endif %}
           {% if form.doc_factory_layout.errors %}<div class="text-danger small">{{ form.doc_factory_layout.errors }}</div>{% endif %}
         </div>
@@ -161,13 +161,13 @@
           <div class="input-group">
             {{ form.direct_location_url }}
             <a id="location-preview-btn" href="#" target="_blank" class="btn btn-outline-success d-none">
-              <i class="fa-solid fa-map-location-dot me-1"></i>فتح الموقع
+              فتح الموقع
             </a>
           </div>
           <div class="form-text mt-2">إضغط على الخريطة لتحديد الموقع المباشر.</div>
           <div class="d-flex align-items-center gap-2 mt-2">
             <button type="button" id="use-current-location-btn" class="btn btn-outline-primary btn-sm">
-              <i class="fa-solid fa-location-crosshairs me-1"></i>تحديد موقعي الحالي
+              تحديد موقعي الحالي
             </button>
             <span id="current-location-status" class="small text-muted"></span>
           </div>
@@ -177,7 +177,7 @@
       </div>
       <div class="mt-4 d-flex gap-2 flex-wrap">
         <button type="submit" class="btn btn-success">
-          <i class="fa-solid fa-floppy-disk me-1"></i>حفظ المنشأة
+          حفظ المنشأة
         </button>
         <a class="btn btn-outline-secondary" href="{% url 'establishment_list' %}">إلغاء</a>
       </div>
@@ -410,7 +410,7 @@
     const triggerBtn = document.createElement('button');
     triggerBtn.type = 'button';
     triggerBtn.className = 'btn btn-outline-success btn-sm';
-    triggerBtn.innerHTML = '<i class="fa-solid fa-upload me-1"></i>اختيار ملف';
+    triggerBtn.textContent = 'اختيار ملف';
 
     const fileName = document.createElement('span');
     fileName.className = 'text-muted small';

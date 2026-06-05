@@ -104,9 +104,6 @@
 {% with status=evaluation.establishment_status %}
 <div class="alert alert-{{ status.color }} border-0 shadow-sm mb-4 py-3 px-4" style="border-radius: 1rem;">
   <div class="d-flex align-items-center gap-3 flex-wrap">
-    <div class="flex-shrink-0 fs-1">
-      <i class="fa-solid {{ status.icon }}"></i>
-    </div>
     <div class="flex-grow-1">
       <div class="small fw-semibold text-uppercase mb-1" style="letter-spacing:1px;">حالة المنشأة بعد التقييم</div>
       <div class="d-flex align-items-center gap-2 flex-wrap">
@@ -284,7 +281,7 @@
       </template>
       <div class="team-add-wrap">
         <button type="button" class="team-add-btn" id="addTeamMemberBtn">
-          <i class="fa-solid fa-user-plus me-1"></i>إضافة شخص
+          إضافة شخص
         </button>
       </div>
     </div>
@@ -298,13 +295,13 @@
 <!-- شريط الحفظ الثابت في الأسفل -->
 <div id="evalSaveBar" class="eval-save-bar d-flex gap-2 align-items-center d-none">
   <button type="submit" form="evaluationForm" class="btn btn-success">
-    <i class="fa-solid fa-floppy-disk me-1"></i>حفظ وإنهاء التقييم
+    حفظ وإنهاء التقييم
   </button>
   <a id="evaluationPdfLink" href="{% url 'evaluation_pdf' evaluation.pk %}" class="btn btn-danger {% if not has_evaluation_result %}d-none{% endif %}" target="_blank">
-    <i class="fa-solid fa-file-pdf me-1"></i>PDF
+    PDF
   </a>
   <span class="ms-auto text-muted small d-none d-md-inline">
-    <i class="fa-solid fa-building text-success me-1"></i>{{ evaluation.establishment }}
+    {{ evaluation.establishment }}
   </span>
 </div>
 

@@ -3,28 +3,24 @@
   <div class="row g-3 mb-3">
     <div class="col-6 col-lg-3">
       <div class="kpi-card kpi-blue h-100">
-        <div class="kpi-icon"><i class="fa-solid fa-clipboard-list"></i></div>
         <div class="kpi-value">{{ total_evaluations|arabic_digits }}</div>
         <div class="kpi-label">إجمالي التقارير</div>
       </div>
     </div>
     <div class="col-6 col-lg-3">
       <div class="kpi-card kpi-green h-100">
-        <div class="kpi-icon"><i class="fa-solid fa-circle-check"></i></div>
         <div class="kpi-value">{{ completed_evaluations_count|arabic_digits }}</div>
         <div class="kpi-label">تقارير مكتملة</div>
       </div>
     </div>
     <div class="col-6 col-lg-3">
       <div class="kpi-card kpi-orange h-100">
-        <div class="kpi-icon"><i class="fa-solid fa-file-lines"></i></div>
         <div class="kpi-value">{{ draft_evaluations_count|arabic_digits }}</div>
         <div class="kpi-label">مسودات</div>
       </div>
     </div>
     <div class="col-6 col-lg-3">
       <div class="kpi-card kpi-teal h-100">
-        <div class="kpi-icon"><i class="fa-solid fa-percent"></i></div>
         <div class="kpi-value">{{ avg_evaluation_percentage|floatformat:1|arabic_digits }}%</div>
         <div class="kpi-label">متوسط الامتثال</div>
       </div>

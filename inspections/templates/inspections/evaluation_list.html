@@ -7,20 +7,20 @@
 
 <div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-2">
   <div>
-    <h1><i class="fa-solid fa-clipboard-list text-success me-2"></i>تقييم المنشآت الغذائية</h1>
+    <h1>تقييم المنشآت الغذائية</h1>
     <div class="sub">تقييم جديد والتقارير الخاصة بالتقييم مع فلترة النتائج بحسب المحافظة والولاية ودرجة التصنيف.</div>
   </div>
   <div class="d-flex gap-2 flex-wrap">
     {% if request.user.is_superuser %}
       <a class="btn btn-outline-warning" href="{% url 'download_reports_backup' %}" title="تنزيل نسخة احتياطية للتقارير مع الصور">
-        <i class="fa-solid fa-box-archive me-1"></i>نسخة احتياطية
+        نسخة احتياطية
       </a>
     {% endif %}
     <a class="btn btn-outline-success" href="/exports/evaluations.xlsx?governorate={{ selected_governorate }}&wilayat={{ selected_wilayat }}&classification={{ selected_classification }}&activity={{ selected_activity }}&q={{ q }}">
-      <i class="fa-solid fa-file-excel me-1"></i>تصدير إكسل
+      تصدير إكسل
     </a>
     <a class="btn btn-success" href="/evaluations/new/">
-      <i class="fa-solid fa-plus me-1"></i>تقييم جديد
+      تقييم جديد
     </a>
   </div>
 </div>
@@ -29,7 +29,7 @@
   <div class="card-body">
     <form class="row g-3 align-items-end">
       <div class="col-md-2">
-        <label class="form-label"><i class="fa-solid fa-map me-1"></i>المحافظة</label>
+        <label class="form-label">المحافظة</label>
         <select name="governorate" id="governorateFilter" class="form-select">
           <option value="">كل المحافظات</option>
           {% for governorate in governorates %}
@@ -38,7 +38,7 @@
         </select>
       </div>
       <div class="col-md-2">
-        <label class="form-label"><i class="fa-solid fa-location-dot me-1"></i>الولاية</label>
+        <label class="form-label">الولاية</label>
         <select name="wilayat" id="wilayatFilter" class="form-select">
           <option value="">كل الولايات</option>
           {% for wilayat in wilayats %}
@@ -47,7 +47,7 @@
         </select>
       </div>
       <div class="col-md-2">
-        <label class="form-label"><i class="fa-solid fa-star me-1"></i>التصنيف</label>
+        <label class="form-label">التصنيف</label>
         <select name="classification" class="form-select">
           <option value="">كل الدرجات</option>
           {% for value, label in classification_choices %}
@@ -56,11 +56,11 @@
         </select>
       </div>
       <div class="col-md-2">
-        <label class="form-label"><i class="fa-solid fa-magnifying-glass me-1"></i>بحث</label>
+        <label class="form-label">بحث</label>
         <input class="form-control" name="q" value="{{ q }}" placeholder="رقم المنشأة أو اسم المنشأة...">
       </div>
       <div class="col-md-2">
-        <label class="form-label"><i class="fa-solid fa-industry me-1"></i>النشاط</label>
+        <label class="form-label">النشاط</label>
         <select name="activity" class="form-select">
           <option value="">كل الأنشطة</option>
           {% for activity in activity_options %}
@@ -69,8 +69,8 @@
         </select>
       </div>
       <div class="col-md-2 d-flex gap-2">
-        <button class="btn btn-success flex-grow-1" type="submit"><i class="fa-solid fa-filter me-1"></i>تطبيق</button>
-        <a class="btn btn-outline-secondary" href="/evaluations/" title="إعادة تعيين"><i class="fa-solid fa-rotate-right"></i></a>
+        <button class="btn btn-success flex-grow-1" type="submit">تطبيق</button>
+        <a class="btn btn-outline-secondary" href="/evaluations/" title="إعادة تعيين">إعادة تعيين</a>
       </div>
     </form>
   </div>
@@ -82,11 +82,11 @@
     <table class="table table-hover mb-0 align-middle">
       <thead>
         <tr>
-          <th><i class="fa-solid fa-store fa-xs me-1"></i>المنشأة</th>
-          <th><i class="fa-solid fa-map fa-xs me-1"></i>المحافظة</th>
-          <th><i class="fa-solid fa-calendar fa-xs me-1"></i>تاريخ الزيارة</th>
-          <th class="text-center"><i class="fa-solid fa-star fa-xs me-1"></i>التصنيف</th>
-          <th class="text-center"><i class="fa-solid fa-circle-dot fa-xs me-1"></i>الحالة</th>
+          <th>المنشأة</th>
+          <th>المحافظة</th>
+          <th>تاريخ الزيارة</th>
+          <th class="text-center">التصنيف</th>
+          <th class="text-center">الحالة</th>
           <th class="text-center">الإجراءات</th>
         </tr>
       </thead>
@@ -95,9 +95,9 @@
           <tr>
             <td>
               <div class="fw-semibold">{{ e.establishment }}</div>
-              <div class="small text-muted"><i class="fa-solid fa-barcode fa-xs me-1"></i>مرجع التقرير: {{ e.report_reference_no }}</div>
-              <div class="small text-muted"><i class="fa-solid fa-hashtag fa-xs me-1"></i>رقم المنشأة: {{ e.establishment.establishment_no|arabic_digits }}</div>
-              <div class="small text-muted"><i class="fa-solid fa-hashtag fa-xs me-1"></i>{{ e.establishment.license_no }}</div>
+              <div class="small text-muted">مرجع التقرير: {{ e.report_reference_no }}</div>
+              <div class="small text-muted">رقم المنشأة: {{ e.establishment.establishment_no|arabic_digits }}</div>
+              <div class="small text-muted">{{ e.establishment.license_no }}</div>
             </td>
             <td>
               <div>{{ e.establishment.governorate.name_ar }}</div>
@@ -125,13 +125,13 @@
             </td>
             <td class="text-center">
               <div class="d-flex gap-1 justify-content-center flex-wrap">
-                <a class="btn btn-sm btn-outline-success" href="/evaluations/{{ e.id }}/edit/" title="فتح التقييم"><i class="fa-solid fa-pen-to-square"></i><span class="d-none d-md-inline ms-1">تعديل</span></a>
-                <a class="btn btn-sm btn-outline-danger" href="/evaluations/{{ e.id }}/pdf/" target="_blank" title="تقرير PDF"><i class="fa-solid fa-file-pdf"></i><span class="d-none d-md-inline ms-1">PDF</span></a>
-                <a class="btn btn-sm btn-outline-primary" href="/evaluations/{{ e.id }}/word/" title="تنزيل Word"><i class="fa-solid fa-file-word"></i><span class="d-none d-md-inline ms-1">Word</span></a>
+                <a class="btn btn-sm btn-outline-success" href="/evaluations/{{ e.id }}/edit/" title="فتح التقييم">تعديل</a>
+                <a class="btn btn-sm btn-outline-danger" href="/evaluations/{{ e.id }}/pdf/" target="_blank" title="تقرير PDF">PDF</a>
+                <a class="btn btn-sm btn-outline-primary" href="/evaluations/{{ e.id }}/word/" title="تنزيل Word">Word</a>
                 <form method="post" action="{% url 'evaluation_delete' e.id %}" class="d-inline" onsubmit="return confirm('هل أنت متأكد من حذف هذا التقرير؟ سيتم حذف الصور المرتبطة به أيضًا.');">
                   {% csrf_token %}
                   <button class="btn btn-sm btn-outline-dark" type="submit" title="حذف التقرير">
-                    <i class="fa-solid fa-trash"></i><span class="d-none d-md-inline ms-1">حذف</span>
+                    حذف
                   </button>
                 </form>
               </div>
@@ -139,7 +139,7 @@
           </tr>
         {% empty %}
           <tr><td colspan="6" class="text-center p-5 text-muted">
-            <i class="fa-regular fa-folder-open fa-2x mb-2 d-block"></i>لا توجد تقارير مستوفية لخيارات البحث الحالية
+            لا توجد تقارير مستوفية لخيارات البحث الحالية
           </td></tr>
         {% endfor %}
       </tbody>
@@ -153,7 +153,7 @@
   <div class="text-muted small">صفحة {{ page_obj.number|arabic_digits }} من {{ page_obj.paginator.num_pages|arabic_digits }} &mdash; إجمالي {{ page_obj.paginator.count|arabic_digits }} تقرير</div>
   <ul class="pagination mb-0">
     {% if page_obj.has_previous %}
-      <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&q={{ q }}&governorate={{ selected_governorate }}&wilayat={{ selected_wilayat }}&classification={{ selected_classification }}&activity={{ selected_activity }}"><i class="fa-solid fa-chevron-right fa-xs"></i></a></li>
+      <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&q={{ q }}&governorate={{ selected_governorate }}&wilayat={{ selected_wilayat }}&classification={{ selected_classification }}&activity={{ selected_activity }}">السابق</a></li>
     {% endif %}
     {% for num in page_obj.paginator.page_range %}
       {% if page_obj.number == num %}
@@ -163,7 +163,7 @@
       {% endif %}
     {% endfor %}
     {% if page_obj.has_next %}
-      <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&q={{ q }}&governorate={{ selected_governorate }}&wilayat={{ selected_wilayat }}&classification={{ selected_classification }}&activity={{ selected_activity }}"><i class="fa-solid fa-chevron-left fa-xs"></i></a></li>
+      <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&q={{ q }}&governorate={{ selected_governorate }}&wilayat={{ selected_wilayat }}&classification={{ selected_classification }}&activity={{ selected_activity }}">التالي</a></li>
     {% endif %}
   </ul>
 </nav>

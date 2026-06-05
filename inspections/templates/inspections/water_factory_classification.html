@@ -7,9 +7,9 @@
 {% block content %}
 
 <nav class="water-context-nav" aria-label="روابط تصنيف مصانع مياه الشرب">
-  <a href="/">💧 الرئيسية</a>
-  <a href="{% url 'water_factory_classification' %}">🏭 لوحة التحكم</a>
-  <a href="{% url 'water_factory_classification' %}">📄 تقارير التصنيف</a>
+  <a href="/">الرئيسية</a>
+  <a href="{% url 'water_factory_classification' %}">لوحة التحكم</a>
+  <a href="{% url 'water_factory_classification' %}">تقارير التصنيف</a>
 </nav>
 
 <section class="water-service-hero mb-4">
@@ -21,7 +21,7 @@
   </div>
   <div class="water-service-actions">
     <a class="btn btn-success" href="{% url 'water_factory_evaluation_form' %}">
-      <i class="fa-solid fa-clipboard-check me-1"></i>بدء تصنيف جديد
+      بدء تصنيف جديد
     </a>
   </div>
 </section>
@@ -29,28 +29,24 @@
 <div class="row g-3 mb-4">
   <div class="col-6 col-lg-3">
     <div class="kpi-card kpi-blue h-100">
-      <div class="kpi-icon"><i class="fa-solid fa-bottle-water"></i></div>
       <div class="kpi-value">{{ total_water_classifications|arabic_digits }}</div>
       <div class="kpi-label">إجمالي التصنيفات</div>
     </div>
   </div>
   <div class="col-6 col-lg-3">
     <div class="kpi-card kpi-green h-100">
-      <div class="kpi-icon"><i class="fa-solid fa-industry"></i></div>
       <div class="kpi-value">{{ classified_factories_count|arabic_digits }}</div>
       <div class="kpi-label">مصانع مصنفة</div>
     </div>
   </div>
   <div class="col-6 col-lg-3">
     <div class="kpi-card kpi-teal h-100">
-      <div class="kpi-icon"><i class="fa-solid fa-percent"></i></div>
       <div class="kpi-value">{{ avg_water_percentage|floatformat:1|arabic_digits }}%</div>
       <div class="kpi-label">متوسط النسبة</div>
     </div>
   </div>
   <div class="col-6 col-lg-3">
     <div class="kpi-card kpi-purple h-100">
-      <div class="kpi-icon"><i class="fa-solid fa-building-circle-check"></i></div>
       <div class="kpi-value">{{ available_factories_count|arabic_digits }}</div>
       <div class="kpi-label">مصانع نشطة مسجلة</div>
     </div>
@@ -208,7 +204,7 @@
         </div>
         <ul class="water-critical-list">
           {% for item in critical_items %}
-          <li><i class="fa-solid fa-triangle-exclamation"></i><span>{{ item }}</span></li>
+          <li><span>{{ item }}</span></li>
           {% endfor %}
         </ul>
       </div>
