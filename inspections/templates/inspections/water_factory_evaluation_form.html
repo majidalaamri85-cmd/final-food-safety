@@ -395,6 +395,10 @@
             gap: 10px;
         }
 
+        .summary-box.is-hidden {
+            display: none;
+        }
+
         .summary-item {
             background: var(--surface);
             border: 1px solid var(--line);
@@ -692,7 +696,7 @@
     <div id="sectionsContainer"></div>
 
     <!-- ملخص النتيجة النهائية -->
-    <div class="summary-box" id="summaryPanel">
+    <div class="summary-box is-hidden" id="summaryPanel">
         <div class="summary-item"><div class="summary-label">إجمالي النقاط الممكنة (مرجحة)</div><div class="summary-value" id="totalWeightedPossible">0</div></div>
         <div class="summary-item"><div class="summary-label">إجمالي النقاط المحققة (مرجحة)</div><div class="summary-value" id="totalWeightedEarned">0</div></div>
         <div class="summary-item"><div class="summary-label">النسبة المئوية</div><div class="summary-value" id="finalPercent">0%</div></div>
@@ -911,7 +915,7 @@
             header.className = 'section-header';
             header.setAttribute('role', 'button');
             header.setAttribute('tabindex', '0');
-            header.setAttribute('aria-expanded', secIdx < 2 ? 'true' : 'false');
+            header.setAttribute('aria-expanded', 'false');
             header.innerHTML = `<span>📌 ${section.name}</span><span class="toggle-icon">▼</span>`;
             const content = document.createElement('div');
             content.className = 'section-content';
@@ -924,24 +928,34 @@
                 const weightVal = severityWeight[item.severity];
                 const maxPoint = weightVal;
                 const optionSelect = document.createElement('select');
-                optionSelect.innerHTML = `<option value="0">غير مستوفي (0%)</option><option value="50">مستوفي جزئياً (50%)</option><option value="100">مستوفي (100%)</option><option value="-1">لا ينطبق (يستبعد)</option>`;
+                optionSelect.innerHTML = `<option value="" selected>لم يتم التقييم</option><option value="0">غير مستوفي (0%)</option><option value="50">مستوفي جزئياً (50%)</option><option value="100">مستوفي (100%)</option><option value="-1">لا ينطبق (يستبعد)</option>`;
                 optionSelect.dataset.index = globalIndex;
                 const scoreSpan = document.createElement('span');
                 scoreSpan.className = 'score-cell';
                 scoreSpan.id = `score_${globalIndex}`;
-                scoreSpan.innerText = '0';
+                scoreSpan.innerText = 'غير مفعل';
                 const earnedFunc = () => {
                     const val = optionSelect.value;
+                    if (val === "") return undefined;
                     if (val === "-1") return null; // يستبعد
                     const percent = parseInt(val);
                     return (percent / 100) * maxPoint;
                 };
                 const updateDisplay = () => {
                     const earned = earnedFunc();
-                    const displayVal = (earned === null) ? "يستبعد" : earned.toFixed(1);
-                    scoreSpan.innerText = (earned === null) ? "─" : earned;
-                    if(earned !== null) scoreSpan.style.background = "#e0f2e0";
-                    else scoreSpan.style.background = "#efebe9";
+                    if (earned === undefined) {
+                        scoreSpan.innerText = "غير مفعل";
+                        scoreSpan.style.background = "#f3f4f6";
+                        scoreSpan.style.color = "#64756e";
+                    } else if (earned === null) {
+                        scoreSpan.innerText = "─";
+                        scoreSpan.style.background = "#efebe9";
+                        scoreSpan.style.color = "var(--muted)";
+                    } else {
+                        scoreSpan.innerText = earned.toFixed(1);
+                        scoreSpan.style.background = "#e0f2e0";
+                        scoreSpan.style.color = "var(--brand-strong)";
+                    }
                 };
                 optionSelect.addEventListener('change', updateDisplay);
                 updateDisplay();
@@ -983,22 +997,17 @@
                     toggleSection();
                 }
             });
-            // افتح أول قسمين بشكل افتراضي (اختياري)
-            if(secIdx < 2) {
-                content.classList.add('open');
-                header.querySelector('.toggle-icon').innerText = '▲';
-            }
         });
     }
 
-    function calculateTotal() {
+    function calculateTotal(showSummary = true) {
         let totalWeightedPossible = 0;
         let totalWeightedEarned = 0;
         let criticalViolations = 0;
         for (let it of allItems) {
             const val = it.select.value;
             if (val === "-1") continue; // لا ينطبق مستبعد
-            const percent = parseInt(val);
+            const percent = val === "" ? 0 : parseInt(val);
             const earnedPoints = (percent / 100) * it.maxPoint;
             totalWeightedPossible += it.maxPoint;
             totalWeightedEarned += earnedPoints;
@@ -1024,6 +1033,9 @@
         document.getElementById('inspectorDecision').innerText = decision;
         if(criticalViolations > 5) document.getElementById('inspectorDecision').innerText = "إيقاف فوري - مخالفات حرجة متعددة";
         syncResultFields(totalWeightedPossible, totalWeightedEarned, percentFinal, rank, document.getElementById('inspectorDecision').innerText, criticalViolations);
+        if (showSummary) {
+            document.getElementById('summaryPanel').classList.remove('is-hidden');
+        }
     }
 
     function syncResultFields(totalPossible, totalEarned, percent, grade, decision, criticalCount) {
@@ -1039,7 +1051,7 @@
     function buildItemsPayload() {
         return allItems.map((it, index) => {
             const value = it.select.value;
-            const percent = value === "-1" ? null : parseInt(value, 10);
+            const percent = value === "-1" ? null : (value === "" ? 0 : parseInt(value, 10));
             const earned = percent === null ? null : (percent / 100) * it.maxPoint;
             return {
                 index: index + 1,
@@ -1056,10 +1068,17 @@
 
     function resetAll() {
         for(let it of allItems) {
-            it.select.value = "0";
+            it.select.value = "";
             it.select.dispatchEvent(new Event('change'));
         }
-        calculateTotal();
+        syncResultFields(0, 0, 0, "D", "-", 0);
+        document.getElementById('totalWeightedPossible').innerText = "0";
+        document.getElementById('totalWeightedEarned').innerText = "0";
+        document.getElementById('finalPercent').innerText = "0%";
+        document.getElementById('finalRank').innerText = "-";
+        document.getElementById('criticalCount').innerText = "0";
+        document.getElementById('inspectorDecision').innerText = "-";
+        document.getElementById('summaryPanel').classList.add('is-hidden');
     }
 
     function setText(id, value) {
@@ -1086,7 +1105,8 @@
 
     window.onload = () => {
         buildForms();
-        calculateTotal();
+        document.getElementById('summaryPanel').classList.add('is-hidden');
+        syncResultFields(0, 0, 0, "D", "-", 0);
         const factorySelect = document.getElementById('factorySelect');
         if (factorySelect) {
             factorySelect.addEventListener('change', updateFacilityDetails);
