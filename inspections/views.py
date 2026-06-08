@@ -5,10 +5,26 @@ from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
 
 def establishment_detail(request, pk):
-    establishment = get_object_or_404(Establishment, pk=pk)
-    qualification = getattr(establishment.qualification_followups.first(), 'current_status', None)
+    establishment = get_object_or_404(
+        Establishment.objects.select_related('governorate', 'wilayat').prefetch_related(
+            Prefetch(
+                'qualification_followups',
+                queryset=QualificationFollowUp.objects.order_by('-start_date', '-id'),
+            ),
+            'haccp_files',
+            Prefetch(
+                'water_classifications',
+                queryset=WaterFactoryClassification.objects.select_related('inspector').order_by(
+                    '-classified_at', '-created_at'
+                ),
+            ),
+        ),
+        pk=pk,
+    )
+    qualification_followups = list(establishment.qualification_followups.all())
+    qualification = qualification_followups[0].current_status if qualification_followups else None
     haccp_files = establishment.haccp_files.all()
-    water_classifications = establishment.water_classifications.select_related('inspector').order_by('-classified_at', '-created_at')
+    water_classifications = establishment.water_classifications.all()
     if request.method == 'POST':
         form = HACCPFileForm(request.POST, request.FILES)
         if form.is_valid():
@@ -22,6 +38,7 @@ def establishment_detail(request, pk):
     return render(request, 'inspections/establishment_detail.html', {
         'establishment': establishment,
         'qualification': qualification,
+        'qualification_followups': qualification_followups,
         'haccp_files': haccp_files,
         'water_classifications': water_classifications,
         'form': form,
@@ -888,7 +905,7 @@ def dashboard(request):
         for row in establishments_with_latest.values('latest_cls').annotate(total=Count('id')).order_by()
         if row['latest_cls']
     }
-    no_eval_count = establishments_with_latest.filter(latest_cls__isnull=True).count()
+    no_eval_count = total_establishments - sum(counted.values())
     establishment_status_summary = []
     for key, meta in sorted(STATUS_META.items(), key=lambda x: x[1]['order']):
         count = counted.get(key, 0)
@@ -1180,8 +1197,11 @@ def evaluation_list(request):
         .order_by('-visit_date', '-created_at')
     )
     _, qs = _apply_rbac(None, qs, profile)
-    activity_options = _get_activity_options(
-        Establishment.objects.filter(evaluations__in=qs).distinct()
+    activity_options = list(
+        qs.exclude(establishment__activity_type='')
+        .order_by('establishment__activity_type')
+        .values_list('establishment__activity_type', flat=True)
+        .distinct()
     )
 
     governorate_id = request.GET.get('governorate', '').strip()

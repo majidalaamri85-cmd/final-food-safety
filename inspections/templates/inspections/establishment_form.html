@@ -13,11 +13,6 @@
     <div class="sub">سجل بيانات المنشأة الأساسية والتشغيلية والمستندات والموقع.</div>
   </div>
   <div class="d-flex gap-2">
-    {% if request.user.is_superuser %}
-      <a class="btn btn-outline-success" href="{% url 'download_database_backup' %}">
-        تنزيل نسخة احتياطية
-      </a>
-    {% endif %}
     <a class="btn btn-outline-secondary" href="{% url 'establishment_list' %}">
       رجوع
     </a>

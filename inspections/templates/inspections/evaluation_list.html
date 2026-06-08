@@ -11,11 +11,6 @@
     <div class="sub">تقييم جديد والتقارير الخاصة بالتقييم مع فلترة النتائج بحسب المحافظة والولاية ودرجة التصنيف.</div>
   </div>
   <div class="d-flex gap-2 flex-wrap">
-    {% if request.user.is_superuser %}
-      <a class="btn btn-outline-warning" href="{% url 'download_reports_backup' %}" title="تنزيل نسخة احتياطية للتقارير مع الصور">
-        نسخة احتياطية
-      </a>
-    {% endif %}
     <a class="btn btn-outline-success" href="/exports/evaluations.xlsx?governorate={{ selected_governorate }}&wilayat={{ selected_wilayat }}&classification={{ selected_classification }}&activity={{ selected_activity }}&q={{ q }}">
       تصدير إكسل
     </a>
