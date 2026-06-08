@@ -1,21 +1,27 @@
 from .forms import HACCPFileForm
-from .models import HACCPFile
+from .models import Establishment, HACCPFile, QualificationFollowUp, WaterFactoryClassification
 # تفاصيل منشأة
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.db.models import Prefetch
 from django.shortcuts import get_object_or_404, redirect, render
 
+@login_required
 def establishment_detail(request, pk):
     establishment = get_object_or_404(
-        Establishment.objects.select_related('governorate', 'wilayat').prefetch_related(
-            Prefetch(
-                'qualification_followups',
-                queryset=QualificationFollowUp.objects.order_by('-start_date', '-id'),
-            ),
-            'haccp_files',
-            Prefetch(
-                'water_classifications',
-                queryset=WaterFactoryClassification.objects.select_related('inspector').order_by(
-                    '-classified_at', '-created_at'
+        _get_allowed_establishments(
+            request.user,
+            Establishment.objects.select_related('governorate', 'wilayat').prefetch_related(
+                Prefetch(
+                    'qualification_followups',
+                    queryset=QualificationFollowUp.objects.order_by('-start_date', '-id'),
+                ),
+                'haccp_files',
+                Prefetch(
+                    'water_classifications',
+                    queryset=WaterFactoryClassification.objects.select_related('inspector').order_by(
+                        '-classified_at', '-created_at'
+                    ),
                 ),
             ),
         ),
@@ -262,6 +268,12 @@ def _get_allowed_evaluations(user, queryset=None):
         queryset = Evaluation.objects.all()
     _, queryset = _apply_rbac(None, queryset, _get_profile(user))
     return queryset
+
+
+def _get_allowed_corrective_actions(user, queryset=None):
+    if queryset is None:
+        queryset = CorrectiveActionLog.objects.all()
+    return queryset.filter(evaluation__in=_get_allowed_evaluations(user))
 
 
 def _build_default_corrective_action(item):
@@ -1680,6 +1692,7 @@ def evaluation_update(request, pk):
 
 
 @login_required
+@require_POST
 def evaluation_submit(request, pk):
     profile = _get_profile(request.user)
     evaluation = get_object_or_404(_get_allowed_evaluations(request.user), pk=pk)
@@ -1699,7 +1712,10 @@ def evaluation_submit(request, pk):
 @login_required
 def corrective_action_list(request):
     qs = (
-        CorrectiveActionLog.objects.select_related('evaluation', 'criterion')
+        _get_allowed_corrective_actions(
+            request.user,
+            CorrectiveActionLog.objects.select_related('evaluation', 'evaluation__establishment', 'criterion'),
+        )
         .order_by('-id')
     )
     paginator = Paginator(qs, PAGE_SIZE)
@@ -1717,6 +1733,7 @@ def corrective_action_list(request):
 @login_required
 def corrective_action_create(request):
     form = CorrectiveActionForm(request.POST or None)
+    form.fields['evaluation'].queryset = _get_allowed_evaluations(request.user).select_related('establishment')
     if form.is_valid():
         obj = form.save(commit=False)
         obj.created_by = request.user
@@ -1728,8 +1745,9 @@ def corrective_action_create(request):
 
 @login_required
 def corrective_action_update(request, pk):
-    corrective_action = get_object_or_404(CorrectiveActionLog, pk=pk)
+    corrective_action = get_object_or_404(_get_allowed_corrective_actions(request.user), pk=pk)
     form = CorrectiveActionForm(request.POST or None, instance=corrective_action)
+    form.fields['evaluation'].queryset = _get_allowed_evaluations(request.user).select_related('establishment')
     if form.is_valid():
         form.save()
         messages.success(request, 'تم تحديث الإجراء التصحيحي.')
