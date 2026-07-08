@@ -5,24 +5,14 @@
 <div class="login-wrap">
   <div class="login-card">
     <h1 class="mb-2">تسجيل الدخول</h1>
-    <p class="text-muted mb-4">الرجاء إدخال اسم المستخدم وكلمة السر للمتابعة إلى تقييم المنشآت الغذائية.</p>
+    <p class="text-muted mb-4">تم إلغاء طلب اسم المستخدم وكلمة السر. اضغط للمتابعة إلى النظام.</p>
 
     <form method="post" novalidate>
       {% csrf_token %}
       <input type="hidden" name="next" value="{{ next }}">
 
-      <div class="mb-3 text-start">
-        <label class="form-label" for="id_username">اسم المستخدم</label>
-        <input id="id_username" name="username" type="text" class="form-control" autocomplete="username" required>
-      </div>
-
-      <div class="mb-3 text-start">
-        <label class="form-label" for="id_password">كلمة السر</label>
-        <input id="id_password" name="password" type="password" class="form-control" autocomplete="current-password" required>
-      </div>
-
       <button type="submit" class="btn btn-success w-100 py-2">
-        دخول
+        المتابعة
       </button>
     </form>
   </div>

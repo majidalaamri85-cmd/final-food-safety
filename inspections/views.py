@@ -60,8 +60,9 @@ from io import BytesIO, StringIO
 
 from django.conf import settings
 from django.contrib import messages
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
 from django.core.management import call_command
 from django.contrib.staticfiles import finders
 from django.core.cache import cache
@@ -661,34 +662,36 @@ def water_factory_evaluation_form(request):
     )
 
 
+def _get_passwordless_user():
+    return (
+        User.objects.filter(is_active=True, is_superuser=True).order_by('id').first()
+        or User.objects.filter(is_active=True, is_staff=True).order_by('id').first()
+        or User.objects.filter(is_active=True).order_by('id').first()
+    )
+
+
+def _safe_next_redirect(request, next_url):
+    if next_url and url_has_allowed_host_and_scheme(
+        url=next_url,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        return redirect(next_url)
+    return redirect('dashboard')
+
+
 def user_login(request):
     next_url = (request.GET.get('next') or request.POST.get('next') or '').strip()
 
     if request.user.is_authenticated:
-        if next_url and url_has_allowed_host_and_scheme(
-            url=next_url,
-            allowed_hosts={request.get_host()},
-            require_https=request.is_secure(),
-        ):
-            return redirect(next_url)
-        return redirect('dashboard')
+        return _safe_next_redirect(request, next_url)
 
-    if request.method == 'POST':
-        username = request.POST.get('username', '').strip()
-        password = request.POST.get('password', '')
+    user = _get_passwordless_user()
+    if user is not None:
+        login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+        return _safe_next_redirect(request, next_url)
 
-        user = authenticate(request, username=username, password=password)
-        if user is not None:
-            login(request, user)
-            if next_url and url_has_allowed_host_and_scheme(
-                url=next_url,
-                allowed_hosts={request.get_host()},
-                require_https=request.is_secure(),
-            ):
-                return redirect(next_url)
-            return redirect('dashboard')
-
-        messages.error(request, 'اسم المستخدم أو كلمة السر غير صحيحة.')
+    messages.error(request, 'لا يوجد مستخدم نشط للدخول إلى النظام.')
 
     context = {
         'minimal_nav': True,
