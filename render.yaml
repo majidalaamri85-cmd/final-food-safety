@@ -3,7 +3,7 @@ services:
     name: food-safety-system
     env: python
     plan: free
-    buildCommand: pip install -r requirements.txt; python manage.py collectstatic --noinput; python manage.py migrate; python manage.py seed_unified_template; python manage.py seed_virtual_data --count 100
+    buildCommand: pip install -r requirements.txt; python manage.py collectstatic --noinput; python manage.py migrate; python manage.py seed_unified_template; python manage.py seed_virtual_data --count 50
     startCommand: gunicorn food_safety_system.wsgi:application
     autoDeploy: true
     disks:
