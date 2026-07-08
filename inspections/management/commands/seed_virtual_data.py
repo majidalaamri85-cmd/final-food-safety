@@ -31,7 +31,6 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         count = max(1, int(options['count']))
-        rnd = Random(2026)
 
         self._ensure_minimum_reference_data()
 
@@ -73,6 +72,7 @@ class Command(BaseCommand):
         today = timezone.localdate()
 
         for i in range(1, count + 1):
+            rnd = Random(2026 + i)
             wilayat = wilayats[(i - 1) % len(wilayats)]
             governorate = wilayat.governorate
             seq = 1000 + i
@@ -97,16 +97,25 @@ class Command(BaseCommand):
             if est_created:
                 created_establishments += 1
 
-            visit_date = today - timedelta(days=rnd.randint(0, 90))
-            evaluation, eval_created = Evaluation.objects.get_or_create(
-                establishment=establishment,
-                visit_date=visit_date,
-                inspector=inspector,
-                defaults={
-                    'approval_status': 'completed',
-                    'notes': f'تقييم افتراضي آلي للمنشأة رقم {i}',
-                },
+            visit_date = today - timedelta(days=(i * 7) % 91)
+            evaluation = (
+                Evaluation.objects.filter(
+                    establishment=establishment,
+                    inspector=inspector,
+                    notes=f'تقييم افتراضي آلي للمنشأة رقم {i}',
+                )
+                .order_by('id')
+                .first()
             )
+            eval_created = evaluation is None
+            if eval_created:
+                evaluation = Evaluation.objects.create(
+                    establishment=establishment,
+                    visit_date=visit_date,
+                    inspector=inspector,
+                    approval_status='completed',
+                    notes=f'تقييم افتراضي آلي للمنشأة رقم {i}',
+                )
 
             if eval_created:
                 for criterion in criteria:
