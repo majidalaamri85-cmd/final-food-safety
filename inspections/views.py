@@ -964,6 +964,161 @@ def dashboard(request):
     return render(request, 'inspections/dashboard.html', context)
 
 
+@login_required
+def evaluation_dashboard(request):
+    profile = _get_profile(request.user)
+
+    governorate_id = request.GET.get('governorate', '').strip()
+    wilayat_id = request.GET.get('wilayat', '').strip()
+    classification = request.GET.get('classification', '').strip()
+    approval_status = request.GET.get('approval_status', '').strip()
+    activity = request.GET.get('activity', '').strip()
+    date_from = request.GET.get('date_from', '').strip()
+    date_to = request.GET.get('date_to', '').strip()
+
+    establishments_qs = Establishment.objects.select_related('governorate', 'wilayat')
+    evaluations_qs = Evaluation.objects.select_related(
+        'establishment',
+        'establishment__governorate',
+        'establishment__wilayat',
+    )
+    establishments_qs, evaluations_qs = _apply_rbac(establishments_qs, evaluations_qs, profile)
+
+    activity_options = list(
+        evaluations_qs.exclude(establishment__activity_type='')
+        .order_by('establishment__activity_type')
+        .values_list('establishment__activity_type', flat=True)
+        .distinct()
+    )
+
+    if governorate_id:
+        establishments_qs = establishments_qs.filter(governorate_id=governorate_id)
+        evaluations_qs = evaluations_qs.filter(establishment__governorate_id=governorate_id)
+    if wilayat_id:
+        establishments_qs = establishments_qs.filter(wilayat_id=wilayat_id)
+        evaluations_qs = evaluations_qs.filter(establishment__wilayat_id=wilayat_id)
+    if activity:
+        establishments_qs = establishments_qs.filter(activity_type=activity)
+        evaluations_qs = evaluations_qs.filter(establishment__activity_type=activity)
+    if classification:
+        evaluations_qs = evaluations_qs.filter(classification=classification)
+    if approval_status:
+        evaluations_qs = evaluations_qs.filter(approval_status=approval_status)
+    if date_from:
+        evaluations_qs = evaluations_qs.filter(visit_date__gte=date_from)
+    if date_to:
+        evaluations_qs = evaluations_qs.filter(visit_date__lte=date_to)
+
+    evaluation_stats = evaluations_qs.aggregate(
+        total=Count('id'),
+        completed=Count('id', filter=Q(approval_status='completed')),
+        draft=Count('id', filter=Q(approval_status='draft')),
+        avg_percentage=Avg('percentage'),
+    )
+    total_evaluations = evaluation_stats['total'] or 0
+    completed_evaluations = evaluation_stats['completed'] or 0
+    draft_evaluations = evaluation_stats['draft'] or 0
+    total_establishments = establishments_qs.count()
+    evaluated_establishments_count = evaluations_qs.values('establishment_id').distinct().count()
+    not_evaluated_count = max(total_establishments - evaluated_establishments_count, 0)
+
+    classification_counts = {
+        row['classification']: row['total']
+        for row in evaluations_qs.values('classification').annotate(total=Count('id'))
+    }
+    classification_labels = dict(Evaluation.CLASSIFICATION_CHOICES)
+    evaluation_classification_chart = [
+        {
+            'label': classification_labels.get(value, value),
+            'count': classification_counts.get(value, 0),
+            'pct': round((classification_counts.get(value, 0) / total_evaluations) * 100, 1) if total_evaluations else 0,
+            'color': {
+                'excellent': 'success',
+                'good': 'primary',
+                'acceptable': 'warning',
+                'weak': 'danger',
+            }.get(value, 'secondary'),
+        }
+        for value, _ in Evaluation.CLASSIFICATION_CHOICES
+    ]
+    evaluation_governorate_chart = [
+        {
+            'label': row['establishment__governorate__name_ar'] or '-',
+            'count': row['total'],
+            'pct': round((row['total'] / total_evaluations) * 100, 1) if total_evaluations else 0,
+        }
+        for row in evaluations_qs.values('establishment__governorate__name_ar').annotate(total=Count('id')).order_by('-total')[:6]
+    ]
+    evaluation_activity_chart = [
+        {
+            'label': row['establishment__activity_type'] or '-',
+            'count': row['total'],
+            'pct': round((row['total'] / total_evaluations) * 100, 1) if total_evaluations else 0,
+        }
+        for row in evaluations_qs.values('establishment__activity_type').annotate(total=Count('id')).order_by('-total')[:6]
+    ]
+    approval_status_counts = {
+        row['approval_status']: row['total']
+        for row in evaluations_qs.values('approval_status').annotate(total=Count('id'))
+    }
+    approval_status_chart = [
+        {
+            'label': label,
+            'count': approval_status_counts.get(value, 0),
+            'pct': round((approval_status_counts.get(value, 0) / total_evaluations) * 100, 1) if total_evaluations else 0,
+            'color': 'success' if value == 'completed' else 'secondary',
+        }
+        for value, label in Evaluation.APPROVAL_STATUS_CHOICES
+    ]
+    recent_evaluations = list(
+        evaluations_qs.order_by('-visit_date', '-created_at')[:8]
+    )
+    weakest_evaluations = list(
+        evaluations_qs.order_by('percentage', '-visit_date', '-created_at')[:6]
+    )
+    open_actions = CorrectiveActionLog.objects.exclude(status='closed').filter(evaluation__in=evaluations_qs).count()
+    non_compliant_items = EvaluationItem.objects.filter(
+        status='non_compliant',
+        criterion__is_active=True,
+        evaluation__in=evaluations_qs,
+    ).count()
+
+    reference_data = _get_reference_data()
+    return render(request, 'inspections/evaluation_dashboard.html', {
+        'total_establishments': total_establishments,
+        'total_evaluations': total_evaluations,
+        'completed_evaluations': completed_evaluations,
+        'draft_evaluations': draft_evaluations,
+        'evaluated_establishments_count': evaluated_establishments_count,
+        'not_evaluated_count': not_evaluated_count,
+        'avg_percentage': round(evaluation_stats['avg_percentage'] or 0, 2),
+        'completion_rate': round((completed_evaluations / total_evaluations) * 100, 1) if total_evaluations else 0,
+        'open_actions': open_actions,
+        'non_compliant_items': non_compliant_items,
+        'evaluation_classification_chart': evaluation_classification_chart,
+        'evaluation_governorate_chart': evaluation_governorate_chart,
+        'evaluation_activity_chart': evaluation_activity_chart,
+        'approval_status_chart': approval_status_chart,
+        'recent_evaluations': recent_evaluations,
+        'weakest_evaluations': weakest_evaluations,
+        'governorates': reference_data['governorates'],
+        'wilayats': reference_data['wilayats'],
+        'classification_choices': Evaluation.CLASSIFICATION_CHOICES,
+        'approval_status_choices': Evaluation.APPROVAL_STATUS_CHOICES,
+        'activity_options': activity_options,
+        'selected_governorate': governorate_id,
+        'selected_wilayat': wilayat_id,
+        'selected_classification': classification,
+        'selected_approval_status': approval_status,
+        'selected_activity': activity,
+        'date_from': date_from,
+        'date_to': date_to,
+        'hide_establishments_nav': True,
+        'hide_water_nav': True,
+        'show_reports_nav': True,
+    })
+
+
 def _build_establishment_list_context(request):
     profile = _get_profile(request.user)
     qs = (

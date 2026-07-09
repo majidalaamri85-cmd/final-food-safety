@@ -1,0 +1,320 @@
+{% extends 'base.html' %}
+{% load inspection_extras %}
+{% block title %}لوحة تحكم تقييم المنشآت الغذائية{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'evaluation_dashboard' %}">تقييم المنشآت الغذائية</a></li>
+<li class="breadcrumb-item active" aria-current="page">لوحة التحكم</li>
+{% endblock %}
+{% block content %}
+
+<section class="evaluation-service-hero mb-3">
+  <div>
+    <h1>لوحة تحكم تقييم المنشآت الغذائية</h1>
+    <p>مؤشرات تنفيذ التقييمات، نسب الامتثال، التصنيفات، والإجراءات المفتوحة حسب نطاق الفلترة الحالي.</p>
+  </div>
+  <div class="evaluation-service-actions">
+    <a class="btn btn-outline-success" href="{% url 'evaluation_list' %}">التقارير</a>
+    <a class="btn btn-success" href="{% url 'evaluation_create' %}">تقييم جديد</a>
+  </div>
+</section>
+
+<nav class="evaluation-context-nav" aria-label="روابط تقييم المنشآت الغذائية">
+  <a href="{% url 'evaluation_dashboard' %}">لوحة التحكم</a>
+  <a href="{% url 'evaluation_create' %}">تقييم جديد</a>
+  <a href="{% url 'evaluation_list' %}">التقارير</a>
+  <a href="{% url 'corrective_action_list' %}">الإجراءات التصحيحية</a>
+</nav>
+
+<form class="card mb-4 border-0 shadow-sm">
+  <div class="card-body">
+    <div class="row g-3 align-items-end">
+      <div class="col-md-2">
+        <label class="form-label">المحافظة</label>
+        <select name="governorate" id="governorateFilter" class="form-select">
+          <option value="">كل المحافظات</option>
+          {% for governorate in governorates %}
+            <option value="{{ governorate.id }}" {% if selected_governorate == governorate.id|stringformat:'s' %}selected{% endif %}>{{ governorate.name_ar }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">الولاية</label>
+        <select name="wilayat" id="wilayatFilter" class="form-select">
+          <option value="">كل الولايات</option>
+          {% for wilayat in wilayats %}
+            <option value="{{ wilayat.id }}" data-governorate="{{ wilayat.governorate_id }}" {% if selected_wilayat == wilayat.id|stringformat:'s' %}selected{% endif %}>{{ wilayat.name_ar }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">التصنيف</label>
+        <select name="classification" class="form-select">
+          <option value="">كل التصنيفات</option>
+          {% for value, label in classification_choices %}
+            <option value="{{ value }}" {% if selected_classification == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">حالة التقييم</label>
+        <select name="approval_status" class="form-select">
+          <option value="">كل الحالات</option>
+          {% for value, label in approval_status_choices %}
+            <option value="{{ value }}" {% if selected_approval_status == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">النشاط</label>
+        <select name="activity" class="form-select">
+          <option value="">كل الأنشطة</option>
+          {% for activity in activity_options %}
+            <option value="{{ activity }}" {% if selected_activity == activity %}selected{% endif %}>{{ activity }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2 d-flex gap-2">
+        <button class="btn btn-success flex-grow-1" type="submit">تطبيق</button>
+        <a class="btn btn-outline-secondary" href="{% url 'evaluation_dashboard' %}">إعادة تعيين</a>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">من تاريخ</label>
+        <input type="date" class="form-control" name="date_from" value="{{ date_from }}">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">إلى تاريخ</label>
+        <input type="date" class="form-control" name="date_to" value="{{ date_to }}">
+      </div>
+    </div>
+  </div>
+</form>
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-4 col-xl-2">
+    <div class="kpi-card kpi-blue h-100">
+      <div class="kpi-value">{{ total_evaluations|arabic_digits }}</div>
+      <div class="kpi-label">إجمالي التقييمات</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-4 col-xl-2">
+    <div class="kpi-card kpi-green h-100">
+      <div class="kpi-value">{{ completed_evaluations|arabic_digits }}</div>
+      <div class="kpi-label">مكتملة</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-4 col-xl-2">
+    <div class="kpi-card kpi-orange h-100">
+      <div class="kpi-value">{{ draft_evaluations|arabic_digits }}</div>
+      <div class="kpi-label">مسودات</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-4 col-xl-2">
+    <div class="kpi-card kpi-teal h-100">
+      <div class="kpi-value">{{ avg_percentage|arabic_digits }}%</div>
+      <div class="kpi-label">متوسط الامتثال</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-4 col-xl-2">
+    <div class="kpi-card kpi-purple h-100">
+      <div class="kpi-value">{{ evaluated_establishments_count|arabic_digits }}</div>
+      <div class="kpi-label">منشآت مقيّمة</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-4 col-xl-2">
+    <div class="kpi-card kpi-red h-100">
+      <div class="kpi-value">{{ open_actions|arabic_digits }}</div>
+      <div class="kpi-label">إجراءات مفتوحة</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-12 col-lg-4">
+    <div class="metric-panel">
+      <div class="metric-panel-header">
+        <h2>توزيع التصنيف</h2>
+      </div>
+      <div class="metric-panel-body">
+        {% for item in evaluation_classification_chart %}
+          <div class="metric-bar-row">
+            <span class="metric-bar-label">{{ item.label }}</span>
+            <div class="metric-bar-track">
+              <div class="metric-bar-fill {{ item.color }}" style="width: {{ item.pct }}%;"></div>
+            </div>
+            <span class="metric-bar-count">{{ item.count|arabic_digits }}</span>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-lg-4">
+    <div class="metric-panel">
+      <div class="metric-panel-header">
+        <h2>التقييمات حسب المحافظة</h2>
+      </div>
+      <div class="metric-panel-body">
+        {% for item in evaluation_governorate_chart %}
+          <div class="metric-bar-row">
+            <span class="metric-bar-label">{{ item.label }}</span>
+            <div class="metric-bar-track">
+              <div class="metric-bar-fill" style="width: {{ item.pct }}%;"></div>
+            </div>
+            <span class="metric-bar-count">{{ item.count|arabic_digits }}</span>
+          </div>
+        {% empty %}
+          <div class="metric-bar-empty">لا توجد بيانات كافية للعرض.</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-lg-4">
+    <div class="metric-panel">
+      <div class="metric-panel-header">
+        <h2>التقييمات حسب النشاط</h2>
+      </div>
+      <div class="metric-panel-body">
+        {% for item in evaluation_activity_chart %}
+          <div class="metric-bar-row">
+            <span class="metric-bar-label">{{ item.label }}</span>
+            <div class="metric-bar-track">
+              <div class="metric-bar-fill primary" style="width: {{ item.pct }}%;"></div>
+            </div>
+            <span class="metric-bar-count">{{ item.count|arabic_digits }}</span>
+          </div>
+        {% empty %}
+          <div class="metric-bar-empty">لا توجد بيانات كافية للعرض.</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-12 col-lg-4">
+    <div class="evaluation-summary-card h-100">
+      <h2>تغطية التقييم</h2>
+      <div class="evaluation-coverage-number">{{ evaluated_establishments_count|arabic_digits }} / {{ total_establishments|arabic_digits }}</div>
+      <div class="text-muted small mb-3">منشأة لديها تقييم ضمن نطاق الفلترة</div>
+      <div class="progress" style="height: 10px;">
+        <div class="progress-bar bg-success" style="width: {% if total_establishments %}{% widthratio evaluated_establishments_count total_establishments 100 %}{% else %}0{% endif %}%;"></div>
+      </div>
+      <div class="d-flex justify-content-between small text-muted mt-2">
+        <span>مقيّمة: {{ evaluated_establishments_count|arabic_digits }}</span>
+        <span>بدون تقييم: {{ not_evaluated_count|arabic_digits }}</span>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-lg-4">
+    <div class="evaluation-summary-card h-100">
+      <h2>اكتمال التقارير</h2>
+      <div class="evaluation-coverage-number">{{ completion_rate|arabic_digits }}%</div>
+      <div class="text-muted small mb-3">نسبة التقييمات المكتملة من إجمالي التقييمات</div>
+      {% for item in approval_status_chart %}
+        <div class="metric-bar-row">
+          <span class="metric-bar-label">{{ item.label }}</span>
+          <div class="metric-bar-track">
+            <div class="metric-bar-fill {{ item.color }}" style="width: {{ item.pct }}%;"></div>
+          </div>
+          <span class="metric-bar-count">{{ item.count|arabic_digits }}</span>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="col-12 col-lg-4">
+    <div class="evaluation-summary-card h-100">
+      <h2>بنود تحتاج متابعة</h2>
+      <div class="evaluation-coverage-number">{{ non_compliant_items|arabic_digits }}</div>
+      <div class="text-muted small mb-3">بنود غير مستوفية في التقييمات المعروضة</div>
+      <a class="btn btn-outline-success w-100" href="{% url 'corrective_action_list' %}">عرض الإجراءات التصحيحية</a>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-12 col-xl-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body p-0">
+        <div class="table-section-title">أحدث التقييمات</div>
+        <div class="table-responsive mobile-table-wrap">
+          <table class="table table-hover mb-0 align-middle">
+            <thead>
+              <tr>
+                <th>المنشأة</th>
+                <th>المحافظة</th>
+                <th class="text-center">النسبة</th>
+                <th class="text-center">الحالة</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for evaluation in recent_evaluations %}
+              <tr>
+                <td>
+                  <a class="fw-semibold" href="{% url 'evaluation_update' evaluation.id %}">{{ evaluation.establishment }}</a>
+                  <div class="small text-muted">رقم المنشأة: {{ evaluation.establishment.establishment_no|arabic_digits }} - {{ evaluation.visit_date|date:"Y/m/d"|arabic_digits }}</div>
+                </td>
+                <td>{{ evaluation.establishment.governorate.name_ar }}</td>
+                <td class="text-center">{{ evaluation.percentage|arabic_digits }}%</td>
+                <td class="text-center">{{ evaluation.get_approval_status_display }}</td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="4" class="text-center text-muted py-4">لا توجد تقييمات حتى الآن.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-xl-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body p-0">
+        <div class="table-section-title">أضعف النتائج الحديثة</div>
+        <div class="table-responsive mobile-table-wrap">
+          <table class="table table-hover mb-0 align-middle">
+            <thead>
+              <tr>
+                <th>المنشأة</th>
+                <th>تاريخ الزيارة</th>
+                <th class="text-center">النسبة</th>
+                <th class="text-center">التصنيف</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for evaluation in weakest_evaluations %}
+              <tr>
+                <td>
+                  <a class="fw-semibold" href="{% url 'evaluation_update' evaluation.id %}">{{ evaluation.establishment }}</a>
+                  <div class="small text-muted">رقم المنشأة: {{ evaluation.establishment.establishment_no|arabic_digits }}</div>
+                </td>
+                <td>{{ evaluation.visit_date|date:"Y/m/d"|arabic_digits }}</td>
+                <td class="text-center">
+                  <span class="badge rounded-pill {% if evaluation.percentage < 50 %}bg-danger{% elif evaluation.percentage < 75 %}bg-warning text-dark{% else %}bg-success{% endif %}">{{ evaluation.percentage|arabic_digits }}%</span>
+                </td>
+                <td class="text-center">{{ evaluation.get_classification_display }}</td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="4" class="text-center text-muted py-4">لا توجد تقييمات حتى الآن.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function filterWilayats() {
+    const gov = document.getElementById('governorateFilter').value;
+    document.querySelectorAll('#wilayatFilter option[data-governorate]').forEach(function(option) {
+      option.hidden = gov && option.dataset.governorate !== gov;
+    });
+    const wilayat = document.getElementById('wilayatFilter');
+    if (wilayat.selectedOptions[0] && wilayat.selectedOptions[0].hidden) {
+      wilayat.value = '';
+    }
+  }
+  document.getElementById('governorateFilter').addEventListener('change', filterWilayats);
+  filterWilayats();
+</script>
+{% endblock %}

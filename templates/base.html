@@ -18,8 +18,8 @@
   <!-- Font Awesome: تحميل مؤجل لأيقونات غير ضرورية للعرض الأولي -->
   <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
   <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"></noscript>
-  <link rel="preload" href="{% static 'css/app.css' %}?v=12" as="style">
-  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=12">
+  <link rel="preload" href="{% static 'css/app.css' %}?v=13" as="style">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=13">
 </head>
 <body>
 
@@ -42,10 +42,10 @@
         <a class="nav-link nav-pill" href="/establishments/new/">المنشآت</a>
         {% endif %}
         {% if not hide_evaluations_nav %}
-        <a class="nav-link nav-pill" href="/evaluations/">تقييم المنشآت الغذائية</a>
+        <a class="nav-link nav-pill" href="{% url 'evaluation_dashboard' %}">تقييم المنشآت الغذائية</a>
         {% endif %}
         {% if show_reports_nav %}
-        <a class="nav-link nav-pill" href="/evaluations/">التقارير</a>
+        <a class="nav-link nav-pill" href="{% url 'evaluation_list' %}">التقارير</a>
         {% endif %}
         {% if not hide_water_nav %}
         <a class="nav-link nav-pill" href="/water-factory-classification/">تصنيف مصانع مياه الشرب</a>
